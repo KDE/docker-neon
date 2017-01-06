@@ -15,6 +15,7 @@ ENV KDE_FULL_SESSION=true
 RUN groupadd admin
 RUN useradd -G admin -ms /bin/bash neon
 RUN echo 'neon:neon' | chpasswd
+RUN echo 'neon ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 USER neon
 WORKDIR /home/neon
 CMD startkde
