@@ -10,6 +10,7 @@ RUN apt-key add public.key
 ADD neon.list /etc/apt/sources.list.d/
 RUN apt-get update
 RUN apt-get install -y neon-desktop
+RUN apt-get dist-upgrade -y
 ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
 RUN groupadd admin
