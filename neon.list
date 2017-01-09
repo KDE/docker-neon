@@ -1,2 +1,2 @@
-deb http://archive.neon.kde.org/dev/stable xenial main
-deb-src http://archive.neon.kde.org/dev/stable xenial main
+deb http://archive.neon.kde.org/dev/unstable xenial main
+deb-src http://archive.neon.kde.org/dev/unstable xenial main
