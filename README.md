@@ -1,6 +1,6 @@
-# KDE neon Developer Unstable Edition Docker images
+# KDE neon Docker images - all packages
 
-Automatically updated with the latest from KDE neon, itself automatically updated with the latest KDE software.
+Updated daily with the latest from KDE neon, itself automatically updated with the latest KDE software.
 
 ## Running
 
