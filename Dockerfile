@@ -1,4 +1,3 @@
-# This is a comment
 FROM ubuntu:16.04
 MAINTAINER Jonathan Riddell <jr@jriddell.org>
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
