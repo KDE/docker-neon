@@ -3,7 +3,7 @@ MAINTAINER Jonathan Riddell <jr@jriddell.org>
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 RUN echo keyboard-configuration keyboard-configuration/layout select 'English (US)' | debconf-set-selections;
 RUN echo keyboard-configuration keyboard-configuration/layoutcode select 'us' | debconf-set-selections;
-RUN apt-get update && apt-get install -y wget less nano sudo
+RUN apt-get update && apt-get install -y wget less nano sudo psmisc
 RUN wget https://archive.neon.kde.org/public.key
 RUN apt-key add public.key
 ADD neon.list /etc/apt/sources.list.d/
