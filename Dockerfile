@@ -6,14 +6,17 @@ RUN echo keyboard-configuration keyboard-configuration/layoutcode select 'us' | 
 RUN apt-get update && apt-get install -y wget less nano sudo psmisc
 RUN wget https://archive.neon.kde.org/public.key
 RUN apt-key add public.key
+RUN rm public.key
 ADD neon.list /etc/apt/sources.list.d/
 RUN apt-get update
-RUN apt-get install -y neon-desktop
+RUN apt-get install -y neon-desktop plasma-workspace-wayland kwin-wayland kwin-wayland-backend-x11 kwin-wayland-backend-wayland
 RUN apt-get dist-upgrade -y
 ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
+ENV PS1='\[\e[34m\]\udocker@dev-stable$(__git_ps1)>'
 RUN groupadd admin
 RUN useradd -G admin -ms /bin/bash neon
+RUN useradd -G video -ms /bin/bash neon
 RUN echo 'neon:U6aMy0wojraho' | chpasswd -e
 RUN echo 'neon ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 USER neon
