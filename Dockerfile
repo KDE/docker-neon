@@ -14,7 +14,6 @@ RUN apt-get dist-upgrade -y
 ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
 ENV PS1='\[\e[34m\]\udocker@dev-unstable$(__git_ps1)>'
-ENV PS1='\[\e[34m\]\udocker@dev-stable$(__git_ps1)>'
 RUN groupadd admin
 RUN groupadd video
 RUN useradd -G admin,video -ms /bin/bash neon
