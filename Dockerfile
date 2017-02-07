@@ -13,7 +13,7 @@ RUN apt-get install -y neon-desktop plasma-workspace-wayland kwin-wayland kwin-w
 RUN apt-get dist-upgrade -y
 ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
-ENV PS1='\[\e[34m\]\udocker@dev-stable$(__git_ps1)>'
+ENV PS1='\[\e[34m\]\udocker@dev-unstable$(__git_ps1)>'
 RUN groupadd admin
 RUN useradd -G admin -ms /bin/bash neon
 RUN useradd -G video -ms /bin/bash neon
