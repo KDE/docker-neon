@@ -1,0 +1,16 @@
+#!/bin/sh
+cd /home/sebas/docker
+#docker cp start-kmail /usr/bin/start-kmail
+#docker run -ti --rm \
+docker run -ti \
+       -e DISPLAY=$DISPLAY \
+       -e KDE_FULL_SESSION=true \
+       -e KDE_SESSION_UID=1000 \
+       -e LC_ALL=en_US.UTF8 \
+       -e QT_AUTO_SCREEN_SCALE_FACTOR=0 \
+       -e KDE_SESSION_VERSION=5 \
+       -e XDG_CURRENT_DESKTOP=KDE \
+       -v /tmp/.X11-unix:/tmp/.X11-unix \
+       -v /home/sebas/docker/kmailhome:/home/sebas \
+       neonlts \
+       kmail
