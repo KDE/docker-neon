@@ -15,7 +15,6 @@ ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
 ENV PS1='\[\e[34m\]\udocker@user-lts$(__git_ps1)>'
 RUN groupadd admin
-RUN groupadd video
 RUN useradd -G admin,video -ms /bin/bash neon
 
 # No password needed
