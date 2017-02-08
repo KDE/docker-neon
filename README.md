@@ -21,3 +21,5 @@ Or you can tell it to run on DISPLAY=:0 and run a single app
 xhost +
 docker run -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=:0 kdeneon/plasma:dev-unstable dolphin
 ```
+
+Sometimes, apps may block. Likely, this is related to playing sound. Going through the notifications and disabling sounds from systemsettings works for me.
