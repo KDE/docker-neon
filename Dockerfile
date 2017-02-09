@@ -9,7 +9,7 @@ RUN apt-key add public.key
 RUN rm public.key
 ADD neon.list /etc/apt/sources.list.d/
 RUN apt-get update
-RUN apt-get install -y neon-desktop plasma-workspace-wayland kwin-wayland kwin-wayland-backend-x11 kwin-wayland-backend-wayland
+RUN apt-get install -y neon-desktop plasma-workspace-wayland kwin-wayland kwin-wayland-backend-x11 kwin-wayland-backend-wayland kwin
 RUN apt-get dist-upgrade -y
 ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
@@ -17,7 +17,7 @@ ENV PS1='\[\e[34m\]\udocker@user$(__git_ps1)>'
 RUN groupadd admin
 RUN useradd -G admin,video -ms /bin/bash neon
 
-# No password needed
+# Blank password
 RUN echo 'neon:U6aMy0wojraho' | chpasswd -e
 RUN echo 'neon ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
