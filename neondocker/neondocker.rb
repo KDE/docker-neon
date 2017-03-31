@@ -65,10 +65,17 @@ def running_xephyr
     end
     system('Xephyr :1 &')
     yield
+    # FIXME don't kill all Xephyrs, only this one
     system('killall Xephyr')
 end
 
-def run_image
+def get_container
+    all = Docker::Container.all(all: true)
+    puts all
+end
+
+# runs the container and wait until Plasma or whatever has stopped running
+def run_container
     # TODO check that the image isn't already running
     container = Docker::Container.create('Image' => 'kdeneon/plasma:user')
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'])
@@ -92,7 +99,10 @@ if $0 == __FILE__
         docker_pull(tag)
     end
     running_xephyr do
-        run_image
+        run_container
     end
     exit 0
 end
+# TODO run a single command
+# TODO package it up
+# TODO update wiki docs

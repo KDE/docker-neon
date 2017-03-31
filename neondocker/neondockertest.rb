@@ -30,4 +30,8 @@ class NeonDockerTest < Test::Unit::TestCase
         assert(docker_has_image?('foo') == false)
     end
 
+    def test_get_container
+        puts "test_get_containerXXX"
+        get_container('kdeneon/plasma:user')
+    end
 end
