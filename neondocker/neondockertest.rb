@@ -31,7 +31,7 @@ class NeonDockerTest < Test::Unit::TestCase
     end
 
     def test_get_container
-        puts "test_get_containerXXX"
-        get_container('kdeneon/plasma:user')
+        assert(get_container('kdeneon/plasma:user').kind_of?(Docker::Container))
+        assert(get_container('moo') == nil)
     end
 end

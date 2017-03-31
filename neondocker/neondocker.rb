@@ -12,6 +12,7 @@ def command_options
         opts.on('-a', '--all', 'Use Neon All images (larger, contains all apps)') { |v| options[:all] = v }
         opts.on('-e', '--edition EDITION', '[user-lts,user,dev-stable,dev-unstable]') { |v| options[:edition] = v }
         opts.on('-k', '--kill', 'kill container on exit') { |v| options[:kill] = v }
+        opts.on('-n', '--new', 'Always start a new container even if one is already running from the requested image') { |v| options[:new] = v }
     end.parse!
 
     editionoptions = ['user-lts','user','dev-stable','dev-unstable']
@@ -69,15 +70,30 @@ def running_xephyr
     system('killall Xephyr')
 end
 
-def get_container
-    all = Docker::Container.all(all: true)
-    puts all
+# If this image already has a container then use that, else start a new one
+# TODO option to always start a new one
+def get_container(tag)
+    allContainers = Docker::Container.all(all: true)
+    allContainers.each do |container|
+        if container.info['Image'] == tag
+            return Docker::Container.get(container.info['id'])
+        end
+    end
+    begin
+        return Docker::Container.create('Image' => tag)
+    rescue Docker::Error::NotFoundError
+        puts "Could not find an image with tag #{tag}"
+        return nil
+    end
 end
 
 # runs the container and wait until Plasma or whatever has stopped running
-def run_container
-    # TODO check that the image isn't already running
-    container = Docker::Container.create('Image' => 'kdeneon/plasma:user')
+def run_container(tag, alwaysNew)
+    if alwaysNew
+        container = Docker::Container.create('Image' => tag)
+    else
+        container = get_container(tag)
+    end
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'])
     container.refresh!
     while container.info['State']['Status'] == "running"
@@ -99,7 +115,7 @@ if $0 == __FILE__
         docker_pull(tag)
     end
     running_xephyr do
-        run_container
+        run_container(tag, options[:new])
     end
     exit 0
 end
