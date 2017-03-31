@@ -71,7 +71,6 @@ def running_xephyr
 end
 
 # If this image already has a container then use that, else start a new one
-# TODO option to always start a new one
 def get_container(tag)
     allContainers = Docker::Container.all(all: true)
     allContainers.each do |container|
