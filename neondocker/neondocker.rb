@@ -134,26 +134,22 @@ end
 
 # runs the container and wait until Plasma or whatever has stopped running
 def run_container(tag, alwaysNew, reattach, keep_alive, wayland = false, xdisplay = 0)
-    puts "run container"
     if reattach
         container = get_container(tag)
     elsif $standalone_application.length > 0
-        puts "running app"
         container = Docker::Container.create('Image' => tag, 'Cmd' => $standalone_application, 'Env' => ['DISPLAY=:0'])
     elsif wayland
-        puts "starting bash"
         container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:0"], 'Cmd' => ['startplasmacompositor'])
     else
-        puts "starting normal"
         container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:#{xdisplay}"])
     end
-    puts container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'], 
-                         'Devices' => [
-                            {"PathOnHost" => '/dev/video0', 'PathInContainer' => '/dev/video0', 'CgroupPermissions' => 'mrw'},
-                            {"PathOnHost" => '/dev/dri/card0', 'PathInContainer' => '/dev/dri/card0', 'CgroupPermissions' => 'mrw'},
-                            {"PathOnHost" => '/dev/dri/controlD64', 'PathInContainer' => '/dev/dri/controlD64', 'CgroupPermissions' => 'mrw'},
-                            {"PathOnHost" => '/dev/dri/renderD128', 'PathInContainer' => '/dev/dri/renderD128', 'CgroupPermissions' => 'mrw'}
-                        ])
+    container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
+                    'Devices' => [
+                        {"PathOnHost" => '/dev/video0', 'PathInContainer' => '/dev/video0', 'CgroupPermissions' => 'mrw'},
+                        {"PathOnHost" => '/dev/dri/card0', 'PathInContainer' => '/dev/dri/card0', 'CgroupPermissions' => 'mrw'},
+                        {"PathOnHost" => '/dev/dri/controlD64', 'PathInContainer' => '/dev/dri/controlD64', 'CgroupPermissions' => 'mrw'},
+                        {"PathOnHost" => '/dev/dri/renderD128', 'PathInContainer' => '/dev/dri/renderD128', 'CgroupPermissions' => 'mrw'}
+                    ])
     container.refresh!
     while container.info['State']['Status'] == "running"
         sleep 1
