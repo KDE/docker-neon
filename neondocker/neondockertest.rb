@@ -20,7 +20,7 @@ class NeonDockerTest < Test::Unit::TestCase
     
     def test_run_xephyr
         #assert(run_xephyr == true)
-        running_xephyr do 
+        running_xephyr(1) do 
             puts 'running'
         end
     end
@@ -33,5 +33,9 @@ class NeonDockerTest < Test::Unit::TestCase
     def test_get_container
         assert(get_container('kdeneon/plasma:user').kind_of?(Docker::Container))
         assert(get_container('moo') == nil)
+    end
+    
+    def test_get_xdisplay
+        assert(get_xdisplay == 1)
     end
 end

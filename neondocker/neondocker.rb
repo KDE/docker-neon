@@ -1,5 +1,25 @@
 #!/usr/bin/ruby
 
+=begin
+Copyright 2017 Jonathan Riddell <jr@jriddell.org>
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation; either version 2 of
+the License or (at your option) version 3 or any later version
+accepted by the membership of KDE e.V. (or its successor approved
+by the membership of KDE e.V.), which shall act as a proxy
+defined in Section 14 of version 3 of the license.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+=end
+
 require 'docker'
 require 'optparse'
 
@@ -16,6 +36,7 @@ def command_options
         opts.on('-k', '--keep-alive', 'keep-alive container on exit') { |v| options[:keep_alive] = v }
         opts.on('-r', '--reattach', 'reuse an existing container [assumes -k]') { |v| options[:reattach] = v }
         opts.on('-n', '--new', 'Always start a new container even if one is already running from the requested image') { |v| options[:new] = v }
+        opts.on('-w', '--wayland', 'Run a Wayland session') { |v| options[:wayland] = v }
         opts.on_tail("standalone-application: Run a standalone application rather than full Plasma shell. Assumes -n to always start a new container.")
     end.parse!
 
@@ -76,13 +97,21 @@ def running_xhost
     system('xhost -')
 end
 
-def running_xephyr
+def get_xdisplay
+    i = 1
+    while FileTest.exist?("/tmp/.X11-unix/X#{i}")
+        i = i + 1
+    end
+    return i
+end
+
+def running_xephyr(xdisplay)
     installed = command?('Xephyr')
     if not installed
         puts "Xephyr is not installed, apt-get install xserver-xephyr or similar"
         exit 1
     end
-    xephyr = IO.popen('Xephyr -screen 1024x768 :1')
+    xephyr = IO.popen("Xephyr -screen 1024x768 :#{xdisplay}")
     yield
     system("kill #{xephyr.pid}")
 end
@@ -104,15 +133,17 @@ def get_container(tag)
 end
 
 # runs the container and wait until Plasma or whatever has stopped running
-def run_container(tag, alwaysNew, reattach, keep_alive)
+def run_container(tag, alwaysNew, reattach, keep_alive, wayland = false, xdisplay = 0)
     if reattach
         container = get_container(tag)
     elsif $standalone_application.length > 0
         container = Docker::Container.create('Image' => tag, 'Cmd' => $standalone_application, 'Env' => ['DISPLAY=:0'])
+    elsif wayland
+        container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:0"])
     else
-        container = Docker::Container.create('Image' => tag)
+        container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:#{xdisplay}"])
     end
-    container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'])
+    container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'], 'Device' => ['/dev/video0:/dev/video0', '/dev/dri/card0:/dev/dri/card0', '/dev/dri/controlD64:/dev/dri/controlD64', '/dev/dri/renderD128:/dev/dri/renderD128'])
     container.refresh!
     while container.info['State']['Status'] == "running"
         sleep 1
@@ -138,11 +169,13 @@ if $0 == __FILE__
             run_container(tag, options[:new], options[:reattach], options[:keep_alive])
         end
     else
-        running_xephyr do
-            run_container(tag, options[:new], options[:reattach], options[:keep_alive])
+        xdisplay = get_xdisplay
+        running_xephyr(xdisplay) do
+            run_container(tag, options[:new], options[:reattach], options[:keep_alive], options[:wayland], xdisplay)
         end
     end
     exit 0
 end
+# TODO wayland
 # TODO package it up
 # TODO update wiki docs
