@@ -134,16 +134,26 @@ end
 
 # runs the container and wait until Plasma or whatever has stopped running
 def run_container(tag, alwaysNew, reattach, keep_alive, wayland = false, xdisplay = 0)
+    puts "run container"
     if reattach
         container = get_container(tag)
     elsif $standalone_application.length > 0
+        puts "running app"
         container = Docker::Container.create('Image' => tag, 'Cmd' => $standalone_application, 'Env' => ['DISPLAY=:0'])
     elsif wayland
-        container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:0"])
+        puts "starting bash"
+        container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:0"], 'Cmd' => ['startplasmacompositor'])
     else
+        puts "starting normal"
         container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:#{xdisplay}"])
     end
-    container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'], 'Device' => ['/dev/video0:/dev/video0', '/dev/dri/card0:/dev/dri/card0', '/dev/dri/controlD64:/dev/dri/controlD64', '/dev/dri/renderD128:/dev/dri/renderD128'])
+    puts container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'], 
+                         'Devices' => [
+                            {"PathOnHost" => '/dev/video0', 'PathInContainer' => '/dev/video0', 'CgroupPermissions' => 'mrw'},
+                            {"PathOnHost" => '/dev/dri/card0', 'PathInContainer' => '/dev/dri/card0', 'CgroupPermissions' => 'mrw'},
+                            {"PathOnHost" => '/dev/dri/controlD64', 'PathInContainer' => '/dev/dri/controlD64', 'CgroupPermissions' => 'mrw'},
+                            {"PathOnHost" => '/dev/dri/renderD128', 'PathInContainer' => '/dev/dri/renderD128', 'CgroupPermissions' => 'mrw'}
+                        ])
     container.refresh!
     while container.info['State']['Status'] == "running"
         sleep 1
@@ -164,9 +174,9 @@ if $0 == __FILE__
     if options[:pull]
         docker_pull(tag)
     end
-    if $standalone_application.length > 0
+    if $standalone_application.length > 0 or options[:wayland]
         running_xhost do
-            run_container(tag, options[:new], options[:reattach], options[:keep_alive])
+            run_container(tag, options[:new], options[:reattach], options[:keep_alive], options[:wayland])
         end
     else
         xdisplay = get_xdisplay
