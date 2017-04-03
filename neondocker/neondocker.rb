@@ -3,23 +3,28 @@
 require 'docker'
 require 'optparse'
 
+$standalone_application = nil
+
 def command_options
     options = {pull: false, all: false, edition: 'user', kill: false }
     OptionParser.new do |opts|
-        opts.banner = "Usage: neondocker [options]"
+        opts.banner = "Usage: neondocker [options] [standalone-application]"
 
         opts.on('-p', '--pull', 'Always pull latest version') { |v| options[:pull] = v }
         opts.on('-a', '--all', 'Use Neon All images (larger, contains all apps)') { |v| options[:all] = v }
         opts.on('-e', '--edition EDITION', '[user-lts,user,dev-stable,dev-unstable]') { |v| options[:edition] = v }
-        opts.on('-k', '--kill', 'kill container on exit') { |v| options[:kill] = v }
+        opts.on('-k', '--keep-alive', 'keep-alive container on exit') { |v| options[:keep_alive] = v }
+        opts.on('-r', '--reattach', 'reuse an existing container [assumes -k]') { |v| options[:reattach] = v }
         opts.on('-n', '--new', 'Always start a new container even if one is already running from the requested image') { |v| options[:new] = v }
+        opts.on_tail("standalone-application: Run a standalone application rather than full Plasma shell. Assumes -n to always start a new container.")
     end.parse!
 
-    editionoptions = ['user-lts','user','dev-stable','dev-unstable']
-    if !editionoptions.include?(options[:edition])
-        puts "Unknown edition. Valid editions are: userlts,user,devstable,devunstable"
+    edition_options = ['user-lts','user','dev-stable','dev-unstable']
+    if !edition_options.include?(options[:edition])
+        puts "Unknown edition. Valid editions are: #{edition_options}"
         exit 1
     end
+    $standalone_application = ARGV
     return options
 end
 
@@ -51,11 +56,24 @@ def docker_image_tag(options)
 end
     
 def docker_pull(tag)
+    puts "Downloading image #{tag}"
     image = Docker::Image.create('fromImage' => tag)
 end
 
+# Is the command available to run?
 def command?(command)
     system("which #{ command} > /dev/null 2>&1")
+end
+
+def running_xhost
+    installed = command?('xhost')
+    if not installed
+        puts "xhost is not installed, apt-get install xserver-xephyr or similar"
+        exit 1
+    end
+    system('xhost +')
+    yield
+    system('xhost -')
 end
 
 def running_xephyr
@@ -64,7 +82,7 @@ def running_xephyr
         puts "Xephyr is not installed, apt-get install xserver-xephyr or similar"
         exit 1
     end
-    system('Xephyr :1 &')
+    system('Xephyr -screen 1024x768 :1 &')
     yield
     # FIXME don't kill all Xephyrs, only this one
     system('killall Xephyr')
@@ -87,11 +105,13 @@ def get_container(tag)
 end
 
 # runs the container and wait until Plasma or whatever has stopped running
-def run_container(tag, alwaysNew)
-    if alwaysNew
-        container = Docker::Container.create('Image' => tag)
-    else
+def run_container(tag, alwaysNew, reattach, keep_alive)
+    if reattach
         container = get_container(tag)
+    elsif $standalone_application.length > 0
+        container = Docker::Container.create('Image' => tag, 'Cmd' => $standalone_application, 'Env' => ['DISPLAY=:0'])
+    else
+        container = Docker::Container.create('Image' => tag)
     end
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'])
     container.refresh!
@@ -100,8 +120,10 @@ def run_container(tag, alwaysNew)
         sleep 1
         container.refresh!
     end
+    if not keep_alive or reattach
+        container.delete
+    end
 end
-
 
 if $0 == __FILE__
     options = command_options
@@ -113,11 +135,17 @@ if $0 == __FILE__
     if options[:pull]
         docker_pull(tag)
     end
-    running_xephyr do
-        run_container(tag, options[:new])
+    if $standalone_application.length > 0
+        running_xhost do
+            run_container(tag, options[:new], options[:reattach], options[:keep_alive])
+        end
+    else
+        running_xephyr do
+            run_container(tag, options[:new], options[:reattach], options[:keep_alive])
+        end
     end
     exit 0
 end
-# TODO run a single command
+# TODO kill the container if requested
 # TODO package it up
 # TODO update wiki docs
