@@ -187,6 +187,3 @@ if $0 == __FILE__
     end
     exit 0
 end
-# TODO wayland
-# TODO package it up
-# TODO update wiki docs
