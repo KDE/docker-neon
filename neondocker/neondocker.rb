@@ -82,10 +82,9 @@ def running_xephyr
         puts "Xephyr is not installed, apt-get install xserver-xephyr or similar"
         exit 1
     end
-    system('Xephyr -screen 1024x768 :1 &')
+    xephyr = IO.popen('Xephyr -screen 1024x768 :1')
     yield
-    # FIXME don't kill all Xephyrs, only this one
-    system('killall Xephyr')
+    system("kill #{xephyr.pid}")
 end
 
 # If this image already has a container then use that, else start a new one
@@ -116,7 +115,6 @@ def run_container(tag, alwaysNew, reattach, keep_alive)
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'])
     container.refresh!
     while container.info['State']['Status'] == "running"
-        puts 'running'
         sleep 1
         container.refresh!
     end
@@ -146,6 +144,5 @@ if $0 == __FILE__
     end
     exit 0
 end
-# TODO kill the container if requested
 # TODO package it up
 # TODO update wiki docs
