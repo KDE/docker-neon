@@ -20,7 +20,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 =end
 
-require 'docker'
+begin
+    require 'docker'
+rescue
+    puts "Could not find docker-api library, run: sudo gem install docker-api"
+    exit 1
+end
 require 'optparse'
 
 $standalone_application = nil
