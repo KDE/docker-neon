@@ -17,11 +17,11 @@ newgrp docker
 
 ## Run
 
-To run a full Plasma session of Neon User Edition:
+To run a full Plasma session of Neon Developer Unstable Edition:
 `neondocker`
 
-To run a full Plasma session of Neon Developer Unstable Edition:
-`neondocker --edition dev-unstable`
+To run a full Plasma session of Neon User Edition:
+`neondocker --edition user`
 
 For more options see
 `neondocker --help`

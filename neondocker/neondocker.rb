@@ -46,11 +46,11 @@ newgrp docker
 
 # Run
 
-To run a full Plasma session of Neon User Edition:
+To run a full Plasma session of Neon Developer Unstable Edition:
 `neondocker`
 
-To run a full Plasma session of Neon Developer Unstable Edition:
-`neondocker --edition dev-unstable`
+To run a full Plasma session of Neon User Edition:
+`neondocker --edition user`
 
 For more options see
 `neondocker --help`
@@ -61,7 +61,7 @@ class NeonDocker
   attr_accessor :container # my Docker::Container
 
   def command_options
-    @options = { pull: false, all: false, edition: 'user', kill: false }
+    @options = { pull: false, all: false, edition: 'dev-unstable', kill: false }
     OptionParser.new do |opts|
       opts.banner = 'Usage: neondocker [options] [standalone-application]'
 
