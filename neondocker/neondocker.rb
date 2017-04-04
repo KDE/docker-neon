@@ -56,6 +56,7 @@ class NeonDocker
 
   attr_accessor :options # settings
   attr_accessor :tag # docker image tag to use
+  attr_accessor :container # my Docker::Container
 
   def command_options
     @options = {pull: false, all: false, edition: 'user', kill: false }
@@ -128,17 +129,16 @@ class NeonDocker
     system('xhost -')
   end
 
-  def get_xdisplay
-    i = 1
-    while FileTest.exist?("/tmp/.X11-unix/X#{i}")
-      i = i + 1
-    end
-    return i
+  def xdisplay
+    return @xdisplay if defined? @xdisplay
+    @xdisplay = 1
+    @xdisplay += 1 while FileTest.exist?("/tmp/.X11-unix/X#{@xdisplay}")
+    @xdisplay
   end
 
-  def running_xephyr(xdisplay)
+  def running_xephyr
     installed = command?('Xephyr')
-    if not installed
+    unless installed
       puts "Xephyr is not installed, apt-get install xserver-xephyr or similar"
       exit 1
     end
@@ -148,38 +148,52 @@ class NeonDocker
   end
 
   # If this image already has a container then use that, else start a new one
-  def get_container
-    allContainers = Docker::Container.all(all: true)
-    allContainers.each do |container|
-      if container.info['Image'] == @tag
-        return Docker::Container.get(container.info['id'])
+  def container
+    return @container if defined? @container
+    if @options[:reattach]
+      all_containers = Docker::Container.all(all: true)
+      all_containers.each do |container|
+        if container.info['Image'] == @tag
+          @container = Docker::Container.get(container.info['id'])
+        end
       end
+      begin
+        @container = Docker::Container.create('Image' => @tag)
+      rescue Docker::Error::NotFoundError
+        puts "Could not find an image with @tag #{@tag}"
+        return nil
+      end
+    elsif !ARGV.empty?
+      @container = Docker::Container.create('Image' => @tag,
+                                            'Cmd' => ARGV,
+                                            'Env' => ['DISPLAY=:0'])
+    elsif @options[:wayland]
+      @container = Docker::Container.create('Image' => @tag,
+                                            'Env' => ['DISPLAY=:0'],
+                                            'Cmd' => ['startplasmacompositor'])
+    else
+      @container =  Docker::Container.create('Image' => @tag,
+                                             'Env' => ["DISPLAY=:#{xdisplay}"])
     end
-    begin
-      return Docker::Container.create('Image' => @tag)
-    rescue Docker::Error::NotFoundError
-      puts "Could not find an image with @tag #{@tag}"
-      return nil
-    end
+    @container
   end
 
   # runs the container and wait until Plasma or whatever has stopped running
-  def run_container(xdisplay = 0)
-    if @options[:reattach]
-      container = get_container
-    elsif ARGV.length > 0
-      container = Docker::Container.create('Image' => @tag, 'Cmd' => ARGV, 'Env' => ['DISPLAY=:0'])
-    elsif @options[:wayland]
-      container = Docker::Container.create('Image' => @tag, 'Env' => ['DISPLAY=:0'], 'Cmd' => ['startplasmacompositor'])
-    else
-      container = Docker::Container.create('Image' => @tag, 'Env' => ["DISPLAY=:#{xdisplay}"])
-    end
+  def run_container
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
                     'Devices' => [
-                        {"PathOnHost" => '/dev/video0', 'PathInContainer' => '/dev/video0', 'CgroupPermissions' => 'mrw'},
-                        {"PathOnHost" => '/dev/dri/card0', 'PathInContainer' => '/dev/dri/card0', 'CgroupPermissions' => 'mrw'},
-                        {"PathOnHost" => '/dev/dri/controlD64', 'PathInContainer' => '/dev/dri/controlD64', 'CgroupPermissions' => 'mrw'},
-                        {"PathOnHost" => '/dev/dri/renderD128', 'PathInContainer' => '/dev/dri/renderD128', 'CgroupPermissions' => 'mrw'}
+                      { 'PathOnHost' => '/dev/video0',
+                        'PathInContainer' => '/dev/video0',
+                        'CgroupPermissions' => 'mrw' },
+                      { 'PathOnHost' => '/dev/dri/card0',
+                        'PathInContainer' => '/dev/dri/card0',
+                        'CgroupPermissions' => 'mrw' },
+                      { 'PathOnHost' => '/dev/dri/controlD64',
+                        'PathInContainer' => '/dev/dri/controlD64',
+                        'CgroupPermissions' => 'mrw' },
+                      { 'PathOnHost' => '/dev/dri/renderD128',
+                        'PathInContainer' => '/dev/dri/renderD128',
+                        'CgroupPermissions' => 'mrw' }
                     ])
     container.refresh!
     while container.info['State']['Status'] == 'running'
@@ -204,9 +218,8 @@ if $PROGRAM_NAME == __FILE__
       neon_docker.run_container
     end
   else
-    xdisplay = neon_docker.get_xdisplay
-    neon_docker.running_xephyr(xdisplay) do
-      neon_docker.run_container(xdisplay)
+    neon_docker.running_xephyr do
+      neon_docker.run_container
     end
   end
   exit 0

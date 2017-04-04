@@ -59,7 +59,7 @@ class NeonDockerTest < Test::Unit::TestCase
   end
 
   def test_run_xephyr
-    @neon_docker.running_xephyr(1) do
+    @neon_docker.running_xephyr do
         puts 'running'
     end
   end
@@ -71,14 +71,16 @@ class NeonDockerTest < Test::Unit::TestCase
     assert(@neon_docker.docker_has_image? == false)
   end
 
-  def test_get_container
+  def test_container
+    @neon_docker.options = {pull: false, all: false, edition: 'user', kill: false }
     @neon_docker.tag = 'kdeneon/plasma:user'
-    assert(@neon_docker.get_container.kind_of?(Docker::Container))
+    assert(@neon_docker.container.kind_of?(Docker::Container))
+    @neon_docker.container = nil
     @neon_docker.tag = 'moo'
-    assert(@neon_docker.get_container == nil)
+    assert(@neon_docker.container == nil)
   end
 
-  def test_get_xdisplay
-    assert(@neon_docker.get_xdisplay == 1)
+  def test_xdisplay
+    assert(@neon_docker.xdisplay == 1)
   end
 end
