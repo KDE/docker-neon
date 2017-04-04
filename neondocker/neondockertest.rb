@@ -22,10 +22,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'test/unit'
 require_relative 'neondocker'
+require 'timeout'
 
 class NeonDockerTest < Test::Unit::TestCase
   def setup
     @neon_docker = NeonDocker.new
+  end
+
+  def test_full_session
+    begin
+      Timeout::timeout(3) do
+        system('./neondocker.rb')
+      end
+    rescue Timeout::Error
+    end
+    system('killall Xephyr')
+  end
+
+  def test_standalone_session
+    begin
+      Timeout::timeout(3) do
+        system('./neondocker.rb okular')
+      end
+    rescue Timeout::Error
+    end
   end
 
   def test_unknown_edition
