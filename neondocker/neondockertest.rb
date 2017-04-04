@@ -45,13 +45,17 @@ class NeonDockerTest < Test::Unit::TestCase
   end
 
   def test_docker_has_image
-    assert(@neon_docker.docker_has_image?('kdeneon/plasma:user') == true)
-    assert(@neon_docker.docker_has_image?('foo') == false)
+    @neon_docker.tag = 'kdeneon/plasma:user'
+    assert(@neon_docker.docker_has_image? == true)
+    @neon_docker.tag = 'foo'
+    assert(@neon_docker.docker_has_image? == false)
   end
 
   def test_get_container
-    assert(@neon_docker.get_container('kdeneon/plasma:user').kind_of?(Docker::Container))
-    assert(@neon_docker.get_container('moo') == nil)
+    @neon_docker.tag = 'kdeneon/plasma:user'
+    assert(@neon_docker.get_container.kind_of?(Docker::Container))
+    @neon_docker.tag = 'moo'
+    assert(@neon_docker.get_container == nil)
   end
 
   def test_get_xdisplay

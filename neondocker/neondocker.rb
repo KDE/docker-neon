@@ -54,7 +54,8 @@ require 'optparse'
 
 class NeonDocker
 
-  attr_accessor :options
+  attr_accessor :options # settings
+  attr_accessor :tag # docker image tag to use
 
   def command_options
     @options = {pull: false, all: false, edition: 'user', kill: false }
@@ -89,11 +90,11 @@ class NeonDocker
   end
 
   # Has the image already been downloaded to the local Docker?
-  def docker_has_image?(tag)
+  def docker_has_image?
     # jings there has to be a way to filter for this
     Docker::Image.all().each do |image|
       if image.info['RepoTags'] != nil
-        if image.info['RepoTags'].include?(tag)
+        if image.info['RepoTags'].include?(@tag)
           return true
         end
       end
@@ -103,12 +104,12 @@ class NeonDocker
 
   def docker_image_tag
     imageType = @options[:all] ? "all" : "plasma"
-    tag = "kdeneon/" + imageType + ":" + @options[:edition]
+    @tag = "kdeneon/" + imageType + ":" + @options[:edition]
   end
       
-  def docker_pull(tag)
-    puts "Downloading image #{tag}"
-    image = Docker::Image.create('fromImage' => tag)
+  def docker_pull
+    puts "Downloading image #{@tag}"
+    image = Docker::Image.create('fromImage' => @tag)
   end
 
   # Is the command available to run?
@@ -147,31 +148,31 @@ class NeonDocker
   end
 
   # If this image already has a container then use that, else start a new one
-  def get_container(tag)
+  def get_container
     allContainers = Docker::Container.all(all: true)
     allContainers.each do |container|
-      if container.info['Image'] == tag
+      if container.info['Image'] == @tag
         return Docker::Container.get(container.info['id'])
       end
     end
     begin
-      return Docker::Container.create('Image' => tag)
+      return Docker::Container.create('Image' => @tag)
     rescue Docker::Error::NotFoundError
-      puts "Could not find an image with tag #{tag}"
+      puts "Could not find an image with @tag #{@tag}"
       return nil
     end
   end
 
   # runs the container and wait until Plasma or whatever has stopped running
-  def run_container(tag, xdisplay = 0)
+  def run_container(xdisplay = 0)
     if @options[:reattach]
-      container = get_container(tag)
+      container = get_container
     elsif ARGV.length > 0
-      container = Docker::Container.create('Image' => tag, 'Cmd' => ARGV, 'Env' => ['DISPLAY=:0'])
+      container = Docker::Container.create('Image' => @tag, 'Cmd' => ARGV, 'Env' => ['DISPLAY=:0'])
     elsif @options[:wayland]
-      container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:0"], 'Cmd' => ['startplasmacompositor'])
+      container = Docker::Container.create('Image' => @tag, 'Env' => ["DISPLAY=:0"], 'Cmd' => ['startplasmacompositor'])
     else
-      container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:#{xdisplay}"])
+      container = Docker::Container.create('Image' => @tag, 'Env' => ["DISPLAY=:#{xdisplay}"])
     end
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
                     'Devices' => [
@@ -185,7 +186,7 @@ class NeonDocker
       sleep 1
       container.refresh!
     end
-    if not @options[:keep_alive] or reattach
+    if not @options[:keep_alive] or @options[:reattach]
       container.delete
     end
   end
@@ -195,21 +196,21 @@ if $0 == __FILE__
   neon_docker = NeonDocker.new
   options = neon_docker.command_options
   neon_docker.validate_docker
-  tag = neon_docker.docker_image_tag
-  if not neon_docker.docker_has_image?(tag)
+  neon_docker.docker_image_tag
+  if not neon_docker.docker_has_image?
     options[:pull] = true
   end
   if options[:pull]
-    neon_docker.docker_pull(tag)
+    neon_docker.docker_pull
   end
   if ARGV.length > 0 or options[:wayland]
     neon_docker.running_xhost do
-      neon_docker.run_container(tag)
+      neon_docker.run_container
     end
   else
     xdisplay = neon_docker.get_xdisplay
     neon_docker.running_xephyr(xdisplay) do
-      neon_docker.run_container(tag, xdisplay)
+      neon_docker.run_container(xdisplay)
     end
   end
   exit 0
