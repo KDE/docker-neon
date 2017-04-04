@@ -28,26 +28,26 @@ require 'optparse'
 
 class NeonDocker
   def command_options
-    options = {pull: false, all: false, edition: 'user', kill: false }
+    @options = {pull: false, all: false, edition: 'user', kill: false }
     OptionParser.new do |opts|
       opts.banner = "Usage: neondocker [options] [standalone-application]"
 
-      opts.on('-p', '--pull', 'Always pull latest version') { |v| options[:pull] = v }
-      opts.on('-a', '--all', 'Use Neon All images (larger, contains all apps)') { |v| options[:all] = v }
-      opts.on('-e', '--edition EDITION', '[user-lts,user,dev-stable,dev-unstable]') { |v| options[:edition] = v }
-      opts.on('-k', '--keep-alive', 'keep-alive container on exit') { |v| options[:keep_alive] = v }
-      opts.on('-r', '--reattach', 'reuse an existing container [assumes -k]') { |v| options[:reattach] = v }
-      opts.on('-n', '--new', 'Always start a new container even if one is already running from the requested image') { |v| options[:new] = v }
-      opts.on('-w', '--wayland', 'Run a Wayland session') { |v| options[:wayland] = v }
+      opts.on('-p', '--pull', 'Always pull latest version') { |v| @options[:pull] = v }
+      opts.on('-a', '--all', 'Use Neon All images (larger, contains all apps)') { |v| @options[:all] = v }
+      opts.on('-e', '--edition EDITION', '[user-lts,user,dev-stable,dev-unstable]') { |v| @options[:edition] = v }
+      opts.on('-k', '--keep-alive', 'keep-alive container on exit') { |v| @options[:keep_alive] = v }
+      opts.on('-r', '--reattach', 'reuse an existing container [assumes -k]') { |v| @options[:reattach] = v }
+      opts.on('-n', '--new', 'Always start a new container even if one is already running from the requested image') { |v| @options[:new] = v }
+      opts.on('-w', '--wayland', 'Run a Wayland session') { |v| @options[:wayland] = v }
       opts.on_tail("standalone-application: Run a standalone application rather than full Plasma shell. Assumes -n to always start a new container.")
     end.parse!
 
     edition_options = ['user-lts','user','dev-stable','dev-unstable']
-    if !edition_options.include?(options[:edition])
+    if !edition_options.include?(@options[:edition])
       puts "Unknown edition. Valid editions are: #{edition_options}"
       exit 1
     end
-    return options
+    @options
   end
 
   def validate_docker
@@ -72,9 +72,9 @@ class NeonDocker
     false
   end
 
-  def docker_image_tag(options)
-    imageType = options[:all] ? "all" : "plasma"
-    tag = "kdeneon/" + imageType + ":" + options[:edition]
+  def docker_image_tag
+    imageType = @options[:all] ? "all" : "plasma"
+    tag = "kdeneon/" + imageType + ":" + @options[:edition]
   end
       
   def docker_pull(tag)
@@ -134,12 +134,12 @@ class NeonDocker
   end
 
   # runs the container and wait until Plasma or whatever has stopped running
-  def run_container(tag, alwaysNew, reattach, keep_alive, wayland = false, xdisplay = 0)
-    if reattach
+  def run_container(tag, xdisplay = 0)
+    if @options[:reattach]
       container = get_container(tag)
     elsif ARGV.length > 0
       container = Docker::Container.create('Image' => tag, 'Cmd' => ARGV, 'Env' => ['DISPLAY=:0'])
-    elsif wayland
+    elsif @options[:wayland]
       container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:0"], 'Cmd' => ['startplasmacompositor'])
     else
       container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:#{xdisplay}"])
@@ -156,7 +156,7 @@ class NeonDocker
       sleep 1
       container.refresh!
     end
-    if not keep_alive or reattach
+    if not @options[:keep_alive] or reattach
       container.delete
     end
   end
@@ -166,7 +166,7 @@ if $0 == __FILE__
   neon_docker = NeonDocker.new
   options = neon_docker.command_options
   neon_docker.validate_docker
-  tag = neon_docker.docker_image_tag(options)
+  tag = neon_docker.docker_image_tag
   if not neon_docker.docker_has_image?(tag)
     options[:pull] = true
   end
@@ -175,12 +175,12 @@ if $0 == __FILE__
   end
   if ARGV.length > 0 or options[:wayland]
     neon_docker.running_xhost do
-      neon_docker.run_container(tag, options[:new], options[:reattach], options[:keep_alive], options[:wayland])
+      neon_docker.run_container(tag)
     end
   else
     xdisplay = neon_docker.get_xdisplay
     neon_docker.running_xephyr(xdisplay) do
-      neon_docker.run_container(tag, options[:new], options[:reattach], options[:keep_alive], options[:wayland], xdisplay)
+      neon_docker.run_container(tag, xdisplay)
     end
   end
   exit 0
