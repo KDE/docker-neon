@@ -27,6 +27,9 @@ end
 require 'optparse'
 
 class NeonDocker
+
+  attr_accessor :options
+
   def command_options
     @options = {pull: false, all: false, edition: 'user', kill: false }
     OptionParser.new do |opts|
