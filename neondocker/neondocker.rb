@@ -25,6 +25,7 @@ rescue
   exit 1
 end
 require 'optparse'
+require 'mkmf'
 
 =begin
 A wee command to simplify running KDE neon Docker images.
@@ -134,7 +135,7 @@ class NeonDocker
 
   # Is the command available to run?
   def installed?(command)
-    system("which #{command} > /dev/null 2>&1")
+    MakeMakefile.find_executable(command)
   end
 
   def running_xhost
@@ -160,7 +161,7 @@ class NeonDocker
     end
     xephyr = IO.popen("Xephyr -screen 1024x768 :#{xdisplay}")
     yield
-    system("kill #{xephyr.pid}")
+    Process.kill("KILL", xephyr.pid)
   end
 
   # If this image already has a container then use that, else start a new one
