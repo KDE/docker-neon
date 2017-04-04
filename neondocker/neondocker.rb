@@ -131,9 +131,7 @@ class NeonDocker
 
   def xdisplay
     return @xdisplay if defined? @xdisplay
-    @xdisplay = 1
-    @xdisplay += 1 while FileTest.exist?("/tmp/.X11-unix/X#{@xdisplay}")
-    @xdisplay
+    @xdisplay = (0..1024).find { |i| !File.exist?("/tmp/.X11-unix/X#{i}") }
   end
 
   def running_xephyr
