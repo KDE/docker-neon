@@ -31,7 +31,7 @@ class NeonDockerTest < Test::Unit::TestCase
 
   def test_full_session
     begin
-      Timeout::timeout(3) do
+      Timeout::timeout(2) do
         system('./neondocker.rb')
       end
     rescue Timeout::Error
@@ -41,7 +41,7 @@ class NeonDockerTest < Test::Unit::TestCase
 
   def test_standalone_session
     begin
-      Timeout::timeout(3) do
+      Timeout::timeout(2) do
         system('./neondocker.rb okular')
       end
     rescue Timeout::Error

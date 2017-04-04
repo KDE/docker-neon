@@ -197,13 +197,9 @@ if $PROGRAM_NAME == __FILE__
   options = neon_docker.command_options
   neon_docker.validate_docker
   neon_docker.docker_image_tag
-  if ! neon_docker.docker_has_image?
-    options[:pull] = true
-  end
-  if options[:pull]
-    neon_docker.docker_pull
-  end
-  if ! ARGV.empty? or options[:wayland]
+  options[:pull] = true unless neon_docker.docker_has_image?
+  neon_docker.docker_pull if options[:pull]
+  if !ARGV.empty? || options[:wayland]
     neon_docker.running_xhost do
       neon_docker.run_container
     end
