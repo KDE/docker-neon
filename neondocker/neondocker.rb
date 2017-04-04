@@ -18,32 +18,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# A wee command to simplify running KDE neon Docker images.
-#
-# KDE neon Docker images are the fastest and easiest way to test out KDE's software.  You can use them on top of any Linux distro.
-#
-# ## Pre-requisites
-#
-# Install Docker and ensure you add yourself into the necessary group.
-# Also install Xephyr which is the X-server-within-a-window to run
-# Plasma.  With Ubuntu this is:
-#
-# ```apt install docker.io xserver-xephyr
-# usermod -G docker
-# newgrp docker
-# ```
-#
-# # Run
-#
-# To run a full Plasma session of Neon User Edition:
-# `neondocker`
-#
-# To run a full Plasma session of Neon Developer Unstable Edition:
-# `neondocker --edition dev-unstable`
-#
-# For more options see
-# `neondocker --help`
-
 begin
   require 'docker'
 rescue
@@ -52,29 +26,75 @@ rescue
 end
 require 'optparse'
 
-class NeonDocker
+=begin
+A wee command to simplify running KDE neon Docker images.
 
+KDE neon Docker images are the fastest and easiest way to test out KDE's
+software.  You can use them on top of any Linux distro.
+
+## Pre-requisites
+
+Install Docker and ensure you add yourself into the necessary group.
+Also install Xephyr which is the X-server-within-a-window to run
+Plasma.  With Ubuntu this is:
+
+```apt install docker.io xserver-xephyr
+usermod -G docker
+newgrp docker
+```
+
+# Run
+
+To run a full Plasma session of Neon User Edition:
+`neondocker`
+
+To run a full Plasma session of Neon Developer Unstable Edition:
+`neondocker --edition dev-unstable`
+
+For more options see
+`neondocker --help`
+=end
+class NeonDocker
   attr_accessor :options # settings
   attr_accessor :tag # docker image tag to use
   attr_accessor :container # my Docker::Container
 
   def command_options
-    @options = {pull: false, all: false, edition: 'user', kill: false }
+    @options = { pull: false, all: false, edition: 'user', kill: false }
     OptionParser.new do |opts|
-      opts.banner = "Usage: neondocker [options] [standalone-application]"
+      opts.banner = 'Usage: neondocker [options] [standalone-application]'
 
-      opts.on('-p', '--pull', 'Always pull latest version') { |v| @options[:pull] = v }
-      opts.on('-a', '--all', 'Use Neon All images (larger, contains all apps)') { |v| @options[:all] = v }
-      opts.on('-e', '--edition EDITION', '[user-lts,user,dev-stable,dev-unstable]') { |v| @options[:edition] = v }
-      opts.on('-k', '--keep-alive', 'keep-alive container on exit') { |v| @options[:keep_alive] = v }
-      opts.on('-r', '--reattach', 'reuse an existing container [assumes -k]') { |v| @options[:reattach] = v }
-      opts.on('-n', '--new', 'Always start a new container even if one is already running from the requested image') { |v| @options[:new] = v }
-      opts.on('-w', '--wayland', 'Run a Wayland session') { |v| @options[:wayland] = v }
-      opts.on_tail('standalone-application: Run a standalone application rather than full Plasma shell. Assumes -n to always start a new container.')
+      opts.on('-p', '--pull', 'Always pull latest version') do |v|
+        @options[:pull] = v
+      end
+      opts.on('-a', '--all',
+              'Use Neon All images (larger, contains all apps)') do |v|
+        @options[:all] = v
+      end
+      opts.on('-e', '--edition EDITION',
+              '[user-lts,user,dev-stable,dev-unstable]') do |v|
+        @options[:edition] = v
+      end
+      opts.on('-k', '--keep-alive', 'keep-alive container on exit') do |v|
+        @options[:keep_alive] = v
+      end
+      opts.on('-r', '--reattach',
+              'reuse an existing container [assumes -k]') do |v|
+        @options[:reattach] = v
+      end
+      opts.on('-n', '--new',
+              'Always start a new container even if one is already running' \
+              'from the requested image') { |v| @options[:new] = v }
+      opts.on('-w', '--wayland', 'Run a Wayland session') do |v|
+        @options[:wayland] = v
+      end
+      opts.on_tail('standalone-application: Run a standalone application ' \
+                   'rather than full Plasma shell. Assumes -n to always ' \
+                   'start a new container.')
     end.parse!
 
-    edition_options = ['user-lts','user','dev-stable','dev-unstable']
-    if !edition_options.include?(@options[:edition])
+    edition_options = ['user-lts', 'user', 'dev-stable', 'dev-unstable']
+    unless edition_options.include?(@options[:edition])
       puts "Unknown edition. Valid editions are: #{edition_options}"
       exit 1
     end
@@ -82,19 +102,18 @@ class NeonDocker
   end
 
   def validate_docker
-    begin
       Docker.validate_version!
     rescue
-      puts 'Could not connect to Docker, check it is installed, running and your user is in the right group for access'
+      puts 'Could not connect to Docker, check it is installed, running and ' \
+           'your user is in the right group for access'
       exit 1
-    end
   end
 
   # Has the image already been downloaded to the local Docker?
   def docker_has_image?
     # jings there has to be a way to filter for this
-    Docker::Image.all().each do |image|
-      if image.info['RepoTags'] != nil
+    Docker::Image.all.each do |image|
+      unless image.info['RepoTags'].nil?
         if image.info['RepoTags'].include?(@tag)
           return true
         end
@@ -104,23 +123,22 @@ class NeonDocker
   end
 
   def docker_image_tag
-    imageType = @options[:all] ? 'all' : 'plasma'
-    @tag = 'kdeneon/' + imageType + ':' + @options[:edition]
+    image_type = @options[:all] ? 'all' : 'plasma'
+    @tag = 'kdeneon/' + image_type + ':' + @options[:edition]
   end
-      
+
   def docker_pull
     puts "Downloading image #{@tag}"
-    image = Docker::Image.create('fromImage' => @tag)
+    Docker::Image.create('fromImage' => @tag)
   end
 
   # Is the command available to run?
-  def command?(command)
-    system("which #{ command} > /dev/null 2>&1")
+  def installed?(command)
+    system("which #{command} > /dev/null 2>&1")
   end
 
   def running_xhost
-    installed = command?('xhost')
-    if not installed
+    unless installed?('xhost')
       puts 'xhost is not installed, run apt install xserver-xephyr or similar'
       exit 1
     end
@@ -135,9 +153,9 @@ class NeonDocker
   end
 
   def running_xephyr
-    installed = command?('Xephyr')
+    installed = installed?('Xephyr')
     unless installed
-      puts "Xephyr is not installed, apt-get install xserver-xephyr or similar"
+      puts 'Xephyr is not installed, apt-get install xserver-xephyr or similar'
       exit 1
     end
     xephyr = IO.popen("Xephyr -screen 1024x768 :#{xdisplay}")
@@ -170,8 +188,8 @@ class NeonDocker
                                             'Env' => ['DISPLAY=:0'],
                                             'Cmd' => ['startplasmacompositor'])
     else
-      @container =  Docker::Container.create('Image' => @tag,
-                                             'Env' => ["DISPLAY=:#{xdisplay}"])
+      @container = Docker::Container.create('Image' => @tag,
+                                            'Env' => ["DISPLAY=:#{xdisplay}"])
     end
     @container
   end
