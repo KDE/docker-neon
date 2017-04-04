@@ -46,7 +46,6 @@ def command_options
     puts "Unknown edition. Valid editions are: #{edition_options}"
     exit 1
   end
-  $standalone_application = ARGV
   return options
 end
 
@@ -137,8 +136,8 @@ end
 def run_container(tag, alwaysNew, reattach, keep_alive, wayland = false, xdisplay = 0)
   if reattach
     container = get_container(tag)
-  elsif $standalone_application.length > 0
-    container = Docker::Container.create('Image' => tag, 'Cmd' => $standalone_application, 'Env' => ['DISPLAY=:0'])
+  elsif ARGV.length > 0
+    container = Docker::Container.create('Image' => tag, 'Cmd' => ARGV, 'Env' => ['DISPLAY=:0'])
   elsif wayland
     container = Docker::Container.create('Image' => tag, 'Env' => ["DISPLAY=:0"], 'Cmd' => ['startplasmacompositor'])
   else
@@ -171,7 +170,7 @@ if $0 == __FILE__
   if options[:pull]
     docker_pull(tag)
   end
-  if $standalone_application.length > 0 or options[:wayland]
+  if ARGV.length > 0 or options[:wayland]
     running_xhost do
       run_container(tag, options[:new], options[:reattach], options[:keep_alive], options[:wayland])
     end
