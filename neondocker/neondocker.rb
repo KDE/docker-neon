@@ -69,7 +69,7 @@ class NeonDocker
       opts.on('-r', '--reattach', 'reuse an existing container [assumes -k]') { |v| @options[:reattach] = v }
       opts.on('-n', '--new', 'Always start a new container even if one is already running from the requested image') { |v| @options[:new] = v }
       opts.on('-w', '--wayland', 'Run a Wayland session') { |v| @options[:wayland] = v }
-      opts.on_tail("standalone-application: Run a standalone application rather than full Plasma shell. Assumes -n to always start a new container.")
+      opts.on_tail('standalone-application: Run a standalone application rather than full Plasma shell. Assumes -n to always start a new container.')
     end.parse!
 
     edition_options = ['user-lts','user','dev-stable','dev-unstable']
@@ -84,7 +84,7 @@ class NeonDocker
     begin
       Docker.validate_version!
     rescue
-      puts "Could not connect to Docker, check it is installed, running and your user is in the right group for access"
+      puts 'Could not connect to Docker, check it is installed, running and your user is in the right group for access'
       exit 1
     end
   end
@@ -103,8 +103,8 @@ class NeonDocker
   end
 
   def docker_image_tag
-    imageType = @options[:all] ? "all" : "plasma"
-    @tag = "kdeneon/" + imageType + ":" + @options[:edition]
+    imageType = @options[:all] ? 'all' : 'plasma'
+    @tag = 'kdeneon/' + imageType + ':' + @options[:edition]
   end
       
   def docker_pull
@@ -120,7 +120,7 @@ class NeonDocker
   def running_xhost
     installed = command?('xhost')
     if not installed
-      puts "xhost is not installed, apt-get install xserver-xephyr or similar"
+      puts 'xhost is not installed, run apt install xserver-xephyr or similar'
       exit 1
     end
     system('xhost +')
@@ -170,7 +170,7 @@ class NeonDocker
     elsif ARGV.length > 0
       container = Docker::Container.create('Image' => @tag, 'Cmd' => ARGV, 'Env' => ['DISPLAY=:0'])
     elsif @options[:wayland]
-      container = Docker::Container.create('Image' => @tag, 'Env' => ["DISPLAY=:0"], 'Cmd' => ['startplasmacompositor'])
+      container = Docker::Container.create('Image' => @tag, 'Env' => ['DISPLAY=:0'], 'Cmd' => ['startplasmacompositor'])
     else
       container = Docker::Container.create('Image' => @tag, 'Env' => ["DISPLAY=:#{xdisplay}"])
     end
@@ -182,11 +182,11 @@ class NeonDocker
                         {"PathOnHost" => '/dev/dri/renderD128', 'PathInContainer' => '/dev/dri/renderD128', 'CgroupPermissions' => 'mrw'}
                     ])
     container.refresh!
-    while container.info['State']['Status'] == "running"
+    while container.info['State']['Status'] == 'running'
       sleep 1
       container.refresh!
     end
-    if ! @options[:keep_alive] || @options[:reattach]
+    if !@options[:keep_alive] || @options[:reattach]
       container.delete
     end
   end
