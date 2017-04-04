@@ -186,24 +186,24 @@ class NeonDocker
       sleep 1
       container.refresh!
     end
-    if not @options[:keep_alive] or @options[:reattach]
+    if ! @options[:keep_alive] || @options[:reattach]
       container.delete
     end
   end
 end
 
-if $0 == __FILE__
+if $PROGRAM_NAME == __FILE__
   neon_docker = NeonDocker.new
   options = neon_docker.command_options
   neon_docker.validate_docker
   neon_docker.docker_image_tag
-  if not neon_docker.docker_has_image?
+  if ! neon_docker.docker_has_image?
     options[:pull] = true
   end
   if options[:pull]
     neon_docker.docker_pull
   end
-  if ARGV.length > 0 or options[:wayland]
+  if ! ARGV.empty? or options[:wayland]
     neon_docker.running_xhost do
       neon_docker.run_container
     end
