@@ -18,7 +18,7 @@ RUN groupadd admin
 RUN useradd -G admin,video -ms /bin/bash neon
 
 # Refresh apt cache once more now that appstream is installed
-RUN rm /var/lib/apt/lists/*
+RUN rm -f /var/lib/apt/lists/*
 RUN apt-get update
 
 # Blank password
