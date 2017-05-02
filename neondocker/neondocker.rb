@@ -197,21 +197,14 @@ class NeonDocker
 
   # runs the container and wait until Plasma or whatever has stopped running
   def run_container
+    # find devices to bind for Wayland
+    devices = Dir["/dev/dri/*"] + Dir["/dev/video*"]
+    devices_list = []
+    devices.each do |dri|
+      devices_list.push({'PathOnHost' => dri, 'PathInContainer' => dri, 'CgroupPermissions' => 'mrw'})
+    end
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
-                    'Devices' => [
-                      { 'PathOnHost' => '/dev/video0',
-                        'PathInContainer' => '/dev/video0',
-                        'CgroupPermissions' => 'mrw' },
-                      { 'PathOnHost' => '/dev/dri/card0',
-                        'PathInContainer' => '/dev/dri/card0',
-                        'CgroupPermissions' => 'mrw' },
-                      { 'PathOnHost' => '/dev/dri/controlD64',
-                        'PathInContainer' => '/dev/dri/controlD64',
-                        'CgroupPermissions' => 'mrw' },
-                      { 'PathOnHost' => '/dev/dri/renderD128',
-                        'PathInContainer' => '/dev/dri/renderD128',
-                        'CgroupPermissions' => 'mrw' }
-                    ])
+                    'Devices' => devices_list)
     container.refresh!
     while container.info['State']['Status'] == 'running'
       sleep 1
