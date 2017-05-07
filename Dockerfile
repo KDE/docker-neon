@@ -2,6 +2,7 @@ FROM ubuntu:16.04
 MAINTAINER Jonathan Riddell <jr@jriddell.org>
 ADD public.key /
 ADD neon.list /etc/apt/sources.list.d/
+ADD bash-prompt /
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
     echo keyboard-configuration keyboard-configuration/layout select 'English (US)' | debconf-set-selections; && \
     echo keyboard-configuration keyboard-configuration/layoutcode select 'us' | debconf-set-selections; && \
@@ -24,7 +25,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     chown neon:neon /run/neon
 ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
-ENV PS1='\[\e[34m\]\udocker@dev-unstable$(__git_ps1)>'
+ENV PS1=`cat /bash-prompt'
 
 ENV XDG_RUNTIME_DIR=/run/neon
 USER neon
