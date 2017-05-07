@@ -4,8 +4,8 @@ ADD public.key /
 ADD neon.list /etc/apt/sources.list.d/
 ADD bash-prompt /
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
-    echo keyboard-configuration keyboard-configuration/layout select 'English (US)' | debconf-set-selections; && \
-    echo keyboard-configuration keyboard-configuration/layoutcode select 'us' | debconf-set-selections; && \
+    echo keyboard-configuration keyboard-configuration/layout select 'English (US)' | debconf-set-selections && \
+    echo keyboard-configuration keyboard-configuration/layoutcode select 'us' | debconf-set-selections && \
     apt-key add /public.key && \
     rm /public.key && \
     apt-get update && \
@@ -22,10 +22,10 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     apt-get clean && \
     # Wayland bits \
     mkdir /run/neon && \
-    chown neon:neon /run/neon
+    chown neon:neon /run/neon && \
+    export PS1=`cat /bash-prompt`
 ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
-ENV PS1=`cat /bash-prompt`
 
 ENV XDG_RUNTIME_DIR=/run/neon
 USER neon
