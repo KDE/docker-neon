@@ -14,7 +14,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     groupadd admin && \
     useradd -G admin,video -ms /bin/bash neon && \
     # Refresh apt cache once more now that appstream is installed \
-    rm /var/lib/apt/lists/* && \
+    rm -r /var/lib/apt/lists/* && \
     apt-get update && \
     # Blank password \
     echo 'neon:U6aMy0wojraho' | chpasswd -e && \
