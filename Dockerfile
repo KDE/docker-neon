@@ -9,7 +9,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     apt-key add /public.key && \
     rm /public.key && \
     apt-get update && \
-    apt-get install -y neon-desktop plasma-workspace-wayland kwin-wayland kwin-wayland-backend-x11 kwin-wayland-backend-wayland kwin && \
+    apt-get install -y ubuntu-minimal ubuntu-standard neon-desktop plasma-workspace-wayland kwin-wayland kwin-wayland-backend-x11 kwin-wayland-backend-wayland kwin && \
     apt-get dist-upgrade -y && \
     groupadd admin && \
     useradd -G admin,video -ms /bin/bash neon && \
