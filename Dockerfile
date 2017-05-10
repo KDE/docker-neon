@@ -6,7 +6,7 @@ ADD bash-prompt /
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
     echo keyboard-configuration keyboard-configuration/layout select 'English (US)' | debconf-set-selections && \
     echo keyboard-configuration keyboard-configuration/layoutcode select 'us' | debconf-set-selections && \
-    echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections \
+    echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections && \
     apt-key add /public.key && \
     rm /public.key && \
     apt-get update && \
