@@ -18,6 +18,6 @@ docker run -v /tmp/.X11-unix:/tmp/.X11-unix kdeneon/plasma:dev-unstable
 Or you can tell it to run on DISPLAY=:0 and run a single app
 
 ```
-xhost +
+xhost +si:localuser:$USER
 docker run -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=:0 kdeneon/plasma:dev-unstable dolphin
 ```
