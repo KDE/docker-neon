@@ -143,7 +143,8 @@ class NeonDocker
       puts 'xhost is not installed, run apt install xserver-xephyr or similar'
       exit 1
     end
-    system('xhost +')
+    user = ENV['USER']
+    system("xhost +")
     yield
     system('xhost -')
   end
