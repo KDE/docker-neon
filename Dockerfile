@@ -27,7 +27,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     export PS1=`cat /bash-prompt`
 ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
-ENC SHELL=/bin/bash
+ENV SHELL=/bin/bash
 
 ENV XDG_RUNTIME_DIR=/run/neon
 USER neon
