@@ -1,0 +1,11 @@
+[url "git://anongit.kde.org/"]
+    insteadOf = kde:
+[url "ssh://git@git.kde.org/"]
+    insteadOf = kde:
+    pushInsteadOf = kde:
+
+[url "git://anongit.neon.kde.org/"]
+    insteadOf = neon:
+[url "ssh://neon@git.neon.kde.org/"]
+    insteadOf = neon:
+    pushInsteadOf = neon:
