@@ -31,5 +31,6 @@ ENV SHELL=/bin/bash
 
 ENV XDG_RUNTIME_DIR=/run/neon
 USER neon
+COPY gitconfig $HOME/.gitconfig
 WORKDIR /home/neon
 CMD startkde
