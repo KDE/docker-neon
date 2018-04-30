@@ -1,12 +1,15 @@
 FROM ubuntu:18.04
 MAINTAINER Jonathan Riddell <jr@jriddell.org>
 ADD public.key /
-ADD neon.list /etc/apt/sources.list.d/
+ADD neon.list /
 ADD bash-prompt /
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
     echo keyboard-configuration keyboard-configuration/layout select 'English (US)' | debconf-set-selections && \
     echo keyboard-configuration keyboard-configuration/layoutcode select 'us' | debconf-set-selections && \
     echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections && \
+    apt-get update && \
+    apt-get install -y gnupg && \
+    mv /neon.list /etc/apt/sources.list.d/ && \
     apt-key add /public.key && \
     rm /public.key && \
     apt-get update && \
@@ -27,7 +30,8 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     # Wayland bits \
     mkdir /run/neon && \
     chown neon:neon /run/neon && \
-    export PS1=`cat /bash-prompt`
+    export PS1=`cat /bash-prompt` && \
+    apt-get update
 ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
 ENV SHELL=/bin/bash
