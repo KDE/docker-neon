@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 MAINTAINER Jonathan Riddell <jr@jriddell.org>
 ADD public.key /
 ADD neon.list /etc/apt/sources.list.d/
