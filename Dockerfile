@@ -1,11 +1,11 @@
 FROM ubuntu:18.04
 MAINTAINER Jonathan Riddell <jr@jriddell.org>
 ADD public.key /
-ADD neon.list /etc/apt/sources.list.d/
 ADD bash-prompt /
 RUN apt-get update && \
-    apt-get install -y gnupg2 && \
-    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
+    apt-get install -y gnupg2
+ADD neon.list /etc/apt/sources.list.d/
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
     echo keyboard-configuration keyboard-configuration/layout select 'English (US)' | debconf-set-selections && \
     echo keyboard-configuration keyboard-configuration/layoutcode select 'us' | debconf-set-selections && \
     echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections && \
