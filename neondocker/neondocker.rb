@@ -198,7 +198,8 @@ class NeonDocker
       devices_list.push({'PathOnHost' => dri, 'PathInContainer' => dri, 'CgroupPermissions' => 'mrw'})
     end
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
-                    'Devices' => devices_list)
+                    'Devices' => devices_list,
+                    'Privileged' => true)
     container.refresh!
     while container.info['State']['Status'] == 'running'
       sleep 1
