@@ -19,5 +19,5 @@ Or you can tell it to run on DISPLAY=:0 and run a single app
 
 ```
 xhost +
-docker run -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=:0 kdeneon/plasma:dev-unstable dolphin
+docker run -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=:0 --security-opt seccomp=unconfined kdeneon/plasma:dev-unstable dolphin
 ```

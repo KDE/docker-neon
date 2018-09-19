@@ -112,15 +112,9 @@ class NeonDocker
 
   # Has the image already been downloaded to the local Docker?
   def docker_has_image?
-    # jings there has to be a way to filter for this
-    Docker::Image.all.each do |image|
-      unless image.info['RepoTags'].nil?
-        if image.info['RepoTags'].include?(@tag)
-          return true
-        end
-      end
-    end
-    false
+    !Docker::Image
+      .all
+      .find { |image| image.info['RepoTags'].include?(@tag) }.nil?
   end
 
   def docker_image_tag
@@ -204,7 +198,8 @@ class NeonDocker
       devices_list.push({'PathOnHost' => dri, 'PathInContainer' => dri, 'CgroupPermissions' => 'mrw'})
     end
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
-                    'Devices' => devices_list)
+                    'Devices' => devices_list,
+                    'Privileged' => true)
     container.refresh!
     while container.info['State']['Status'] == 'running'
       sleep 1
