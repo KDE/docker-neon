@@ -1,8 +1,10 @@
 FROM kdeneon/plasma:dev-unstable
 MAINTAINER Jonathan Riddell <jr@jriddell.org>
 ADD public.key /
-ADD neon.list /etc/apt/sources.list.d/
 ADD bash-prompt /
+RUN apt-get update && \
+    apt-get install -y gnupg2
+ADD neon.list /etc/apt/sources.list.d/
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
     echo keyboard-configuration keyboard-configuration/layout select 'English (US)' | debconf-set-selections && \
     echo keyboard-configuration keyboard-configuration/layoutcode select 'us' | debconf-set-selections && \
@@ -21,6 +23,9 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     echo 'neon:U6aMy0wojraho' | chpasswd -e && \
     echo 'neon ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
     apt-get clean && \
+    cp /usr/lib/x86_64-linux-gnu/libexec/kf5/start_kdeinit /root/ && \
+    rm /usr/lib/x86_64-linux-gnu/libexec/kf5/start_kdeinit && \
+    cp /root/start_kdeinit /usr/lib/x86_64-linux-gnu/libexec/kf5/start_kdeinit && \
     # Wayland bits \
     mkdir /run/neon && \
     chown neon:neon /run/neon && \
