@@ -1,4 +1,4 @@
-FROM kdeneon/plasma:dev-unstable
+FROM ubuntu:18.04
 MAINTAINER Jonathan Riddell <jr@jriddell.org>
 ADD public.key /
 ADD bash-prompt /
