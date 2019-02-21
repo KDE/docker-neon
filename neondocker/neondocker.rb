@@ -110,9 +110,10 @@ class NeonDocker
 
   # Has the image already been downloaded to the local Docker?
   def docker_has_image?
-    !Docker::Image
-      .all
-      .find { |image| image.info['RepoTags'].nil? ? false : image.info['RepoTags'].include?(@tag) }.nil?
+    !Docker::Image.all.find do |image|
+      next false if image.info['RepoTags'].nil?
+      image.info['RepoTags'].include?(@tag)
+    end.nil?
   end
 
   def docker_image_tag
@@ -201,11 +202,11 @@ class NeonDocker
                     'Devices' => devices_list,
                     'Privileged' => true)
     container.refresh! if container.respond_to? :refresh!
-    status = container.info.has_key?('State')? container.info['State']['Status'] : container.json['State']['Status'] 
+    status = container.info.fetch('State', [])['Status'] || container.json['State']['Status']
     while status == 'running'
       sleep 1
       container.refresh! if container.respond_to? :refresh!
-      status = container.info.has_key?('State')? container.info['State']['Status'] : container.json['State']['Status'] 
+      status = container.info.fetch('State', [])['Status'] || container.json['State']['Status']
     end
     container.delete if !@options[:keep_alive] || @options[:reattach]
   end
