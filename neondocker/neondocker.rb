@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 # Copyright 2017 Jonathan Riddell <jr@jriddell.org>
 #
@@ -20,41 +20,39 @@
 
 begin
   require 'docker'
-rescue
+rescue LoadError
   puts 'Could not find docker-api library, run: sudo gem install docker-api'
   exit 1
 end
 require 'optparse'
 require 'mkmf'
 
-=begin
-A wee command to simplify running KDE neon Docker images.
-
-KDE neon Docker images are the fastest and easiest way to test out KDE's
-software.  You can use them on top of any Linux distro.
-
-## Pre-requisites
-
-Install Docker and ensure you add yourself into the necessary group.
-Also install Xephyr which is the X-server-within-a-window to run
-Plasma.  With Ubuntu this is:
-
-```apt install docker.io xserver-xephyr
-usermod -G docker
-newgrp docker
-```
-
-# Run
-
-To run a full Plasma session of Neon Developer Unstable Edition:
-`neondocker`
-
-To run a full Plasma session of Neon User Edition:
-`neondocker --edition user`
-
-For more options see
-`neondocker --help`
-=end
+# A wee command to simplify running KDE neon Docker images.
+#
+# KDE neon Docker images are the fastest and easiest way to test out KDE's
+# software.  You can use them on top of any Linux distro.
+#
+# ## Pre-requisites
+#
+# Install Docker and ensure you add yourself into the necessary group.
+# Also install Xephyr which is the X-server-within-a-window to run
+# Plasma.  With Ubuntu this is:
+#
+# ```apt install docker.io xserver-xephyr
+# usermod -G docker
+# newgrp docker
+# ```
+#
+# # Run
+#
+# To run a full Plasma session of Neon Developer Unstable Edition:
+# `neondocker`
+#
+# To run a full Plasma session of Neon User Edition:
+# `neondocker --edition user`
+#
+# For more options see
+# `neondocker --help`
 class NeonDocker
   attr_accessor :options # settings
   attr_accessor :tag # docker image tag to use
@@ -103,11 +101,11 @@ class NeonDocker
   end
 
   def validate_docker
-      Docker.validate_version!
-    rescue
-      puts 'Could not connect to Docker, check it is installed, running and ' \
-           'your user is in the right group for access'
-      exit 1
+    Docker.validate_version!
+  rescue
+    puts 'Could not connect to Docker, check it is installed, running and ' \
+         'your user is in the right group for access'
+    exit 1
   end
 
   # Has the image already been downloaded to the local Docker?
@@ -155,7 +153,7 @@ class NeonDocker
     end
     xephyr = IO.popen("Xephyr -screen 1024x768 :#{xdisplay}")
     yield
-    Process.kill("KILL", xephyr.pid)
+    Process.kill('KILL', xephyr.pid)
   end
 
   # If this image already has a container then use that, else start a new one
@@ -192,10 +190,12 @@ class NeonDocker
   # runs the container and wait until Plasma or whatever has stopped running
   def run_container
     # find devices to bind for Wayland
-    devices = Dir["/dev/dri/*"] + Dir["/dev/video*"]
+    devices = Dir['/dev/dri/*'] + Dir['/dev/video*']
     devices_list = []
     devices.each do |dri|
-      devices_list.push({'PathOnHost' => dri, 'PathInContainer' => dri, 'CgroupPermissions' => 'mrw'})
+      devices_list.push('PathOnHost' => dri,
+                        'PathInContainer' => dri,
+                        'CgroupPermissions' => 'mrw')
     end
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
                     'Devices' => devices_list,
@@ -207,9 +207,7 @@ class NeonDocker
       container.refresh! if container.respond_to? :refresh!
       status = container.info.has_key?('State')? container.info['State']['Status'] : container.json['State']['Status'] 
     end
-    if !@options[:keep_alive] || @options[:reattach]
-      container.delete
-    end
+    container.delete if !@options[:keep_alive] || @options[:reattach]
   end
 end
 
