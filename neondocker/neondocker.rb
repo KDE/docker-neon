@@ -202,11 +202,11 @@ class NeonDocker
                     'Devices' => devices_list,
                     'Privileged' => true)
     container.refresh! if container.respond_to? :refresh!
-    status = container.info.fetch('State', [])['Status'] || container.json['State']['Status']
+    status = container.info.fetch('State', [])['Status'] || container.json.fetch('State').fetch('Status')
     while status == 'running'
       sleep 1
       container.refresh! if container.respond_to? :refresh!
-      status = container.info.fetch('State', [])['Status'] || container.json['State']['Status']
+      status = container.info.fetch('State', [])['Status'] || container.json.fetch('State').fetch('Status')
     end
     container.delete if !@options[:keep_alive] || @options[:reattach]
   end
