@@ -46,12 +46,12 @@ class NeonDockerTest < Test::Unit::TestCase
 
   def test_unknown_edition
     exit_status = system('./neondocker.rb', '--edition', 'foo')
-    assert(exit_status == false, 'Should be false')
+    refute(exit_status)
   end
 
   def test_tag_name
     @neon_docker.options = {pull: false, all: false, edition: 'user', kill: false }
-    assert(@neon_docker.docker_image_tag == 'kdeneon/plasma:user')
+    assert_equal('kdeneon/plasma:user', @neon_docker.docker_image_tag)
   end
 
   def test_run_xephyr
@@ -62,9 +62,9 @@ class NeonDockerTest < Test::Unit::TestCase
 
   def test_docker_has_image
     @neon_docker.tag = 'kdeneon/plasma:user'
-    assert(@neon_docker.docker_has_image? == true)
+    assert(@neon_docker.docker_has_image?)
     @neon_docker.tag = 'foo'
-    assert(@neon_docker.docker_has_image? == false)
+    refute(@neon_docker.docker_has_image?)
   end
 
   def test_container
@@ -73,10 +73,10 @@ class NeonDockerTest < Test::Unit::TestCase
     assert(@neon_docker.container.is_a?(Docker::Container))
     @neon_docker.container = nil
     @neon_docker.tag = 'moo'
-    assert(@neon_docker.container == nil)
+    assert_nil(@neon_docker.container)
   end
 
   def test_xdisplay
-    assert(@neon_docker.xdisplay == 1)
+    assert_equal(1, @neon_docker.xdisplay)
   end
 end
