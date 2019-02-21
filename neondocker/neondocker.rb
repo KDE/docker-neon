@@ -201,12 +201,12 @@ class NeonDocker
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
                     'Devices' => devices_list,
                     'Privileged' => true)
-    container.refresh! if container.respond_to? :refresh!
-    status = container.info.fetch('State', [])['Status'] || container.json.fetch('State').fetch('Status')
-    while status == 'running'
-      sleep 1
+    loop do
       container.refresh! if container.respond_to? :refresh!
-      status = container.info.fetch('State', [])['Status'] || container.json.fetch('State').fetch('Status')
+      status = container.info.fetch('State', [])['Status']
+      status ||= container.json.fetch('State').fetch('Status')
+      break if status == 'running'
+      sleep 1
     end
     container.delete if !@options[:keep_alive] || @options[:reattach]
   end
