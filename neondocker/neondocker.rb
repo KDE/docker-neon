@@ -114,7 +114,7 @@ class NeonDocker
   def docker_has_image?
     !Docker::Image
       .all
-      .find { |image| image.info['RepoTags'].include?(@tag) }.nil?
+      .find { |image| image.info['RepoTags'].nil? ? false : image.info['RepoTags'].include?(@tag) }.nil?
   end
 
   def docker_image_tag
@@ -200,10 +200,12 @@ class NeonDocker
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
                     'Devices' => devices_list,
                     'Privileged' => true)
-    container.refresh!
-    while container.info['State']['Status'] == 'running'
+    container.refresh! if container.respond_to? :refresh!
+    status = container.info.has_key?('State')? container.info['State']['Status'] : container.json['State']['Status'] 
+    while status == 'running'
       sleep 1
-      container.refresh!
+      container.refresh! if container.respond_to? :refresh!
+      status = container.info.has_key?('State')? container.info['State']['Status'] : container.json['State']['Status'] 
     end
     if !@options[:keep_alive] || @options[:reattach]
       container.delete
