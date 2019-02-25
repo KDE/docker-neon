@@ -1,0 +1,9 @@
+AllCops:
+  TargetRubyVersion: 2.5
+
+# It's all way too long. No sense complaining, I doubt anyone has plans to fix
+# this.
+Metrics/ClassLength:
+  Enabled: false
+Metrics/MethodLength:
+  Enabled: false
