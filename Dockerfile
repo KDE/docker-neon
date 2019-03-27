@@ -21,7 +21,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     apt-get update && \
     # Blank password \
     echo 'neon:U6aMy0wojraho' | chpasswd -e && \
-    echo 'neon ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
+    echo 'neon ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/neon && \
     apt-get clean && \
     cp /usr/lib/x86_64-linux-gnu/libexec/kf5/start_kdeinit /root/ && \
     rm /usr/lib/x86_64-linux-gnu/libexec/kf5/start_kdeinit && \
