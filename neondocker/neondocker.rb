@@ -143,7 +143,7 @@ class NeonDocker
   attr_accessor :container # my Docker::Container
 
   def command_options
-    @options = { pull: false, all: false, edition: 'dev-unstable', kill: false }
+    @options = { pull: false, all: false, edition: 'unstable', kill: false }
     OptionParser.new do |opts|
       opts.banner = 'Usage: neondocker [options] [standalone-application]'
 
@@ -155,7 +155,7 @@ class NeonDocker
         @options[:all] = v
       end
       opts.on('-e', '--edition EDITION',
-              '[user-lts,user,dev-stable,dev-unstable]') do |v|
+              '[plasma_lts,user,testing,unstable]') do |v|
         @options[:edition] = v
       end
       opts.on('-k', '--keep-alive', 'keep-alive container on exit') do |v|
@@ -176,7 +176,7 @@ class NeonDocker
                    'start a new container.')
     end.parse!
 
-    edition_options = ['user-lts', 'user', 'dev-stable', 'dev-unstable']
+    edition_options = ['plasma_lts', 'user', 'testing', 'unstable']
     unless edition_options.include?(@options[:edition])
       puts "Unknown edition. Valid editions are: #{edition_options}"
       exit 1
