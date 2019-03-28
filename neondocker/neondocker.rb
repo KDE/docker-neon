@@ -32,6 +32,7 @@ end
 
 require 'etc'
 require 'optparse'
+require 'shellwords'
 
 # Finds executables. MakeMakefile is the only core ruby entity providing
 # PATH based executable lookup, unfortunately it is really not meant to be
@@ -394,8 +395,128 @@ class DependencyJiggler
   end
 end
 
+# Parses Linux os-release files.
+#
+# Variables from os-release are accessible through constants.
+#
+# @example Put os-release 'ID' of current system
+#   puts OSRelease::ID
+#
+# @note When running on potential !Linux or legacy systems you'll need to check
+#   {#available?} before accessing constants, otherwise you may encounter
+#   {NotFoundError} exceptions.
+#
+# @see https://www.freedesktop.org/software/systemd/man/os-release.html
+module OSRelease
+  # Raised when no default os-release file could be found.
+  class NotFoundError < StandardError; end
+
+  class << self
+    # @return [Boolean] true when an os-release file was found in default
+    #   locations as per the os-release specification
+    def available?
+      default_path
+      true
+    rescue NotFoundError
+      false
+    end
+
+    # @param key [Symbol] variable name in the os-release file
+    # @return [Boolean] true when the variable key is defined in the os-release
+    #   data
+    def variable?(key)
+      data.key?(key)
+    end
+
+    # Behaves exactly like {Hash#fetch}.
+    #
+    # @return value of variable (if it is defined see {#variable?})
+    def value(key, default = nil, &block)
+      data.fetch(key, default, &block)
+    end
+
+    # @api private
+    def load!(path = default_path)
+      @data = default_data.dup
+      File.read(path).split("\n").each do |line|
+        # Split by comment to also drop leading and trailing comments. Then
+        # strip to possibly reduce to an empty line.
+        # Note that trailing comments are technically not defined by the spec.
+        line = line.split('#', 2)[0].strip
+        next if line.empty?
+
+        key, value = parse(line)
+        @data[key.to_sym] = value
+      end
+      @data
+    end
+
+    # @api private
+    def reset!
+      @data = nil
+    end
+
+    # @api private
+    def const_missing(name)
+      return value(name) if variable?(name)
+
+      super
+    end
+
+    private
+
+    STRINGLISTS = %w[ID_LIKE].freeze
+
+    def parse(line)
+      key, value = line.split('=', 2)
+      return parse_list(key, value) if STRINGLISTS.include?(key)
+
+      parse_string(key, value)
+    end
+
+    def parse_list(key, value)
+      # If the value is quoted split twice. This is effectively the same
+      # as dropping the quotes. ID_LIKE derives from ID and is therefore
+      # super restricted in what it may contain so that a double split has
+      # no adverse affects.
+      value = Shellwords.split(value)[0] if value.start_with?('"')
+      [key, Shellwords.split(value)]
+    end
+
+    def parse_string(key, value)
+      value = Shellwords.split(value)
+      [key, value[0]]
+    end
+
+    def data
+      @data ||= load!
+    end
+
+    def default_data
+      # Spec defines some variables with a default value.
+      {
+        ID: 'linux',
+        NAME: 'Linux',
+        PRETTY_NAME: 'Linux'
+      }
+    end
+
+    def default_path
+      paths = %w[/etc/os-release /usr/lib/os-release]
+      path = paths.find { |x| File.exist?(x) }
+      return path if path
+
+      raise NotFoundError,
+            "Could not find os-release file in default locations: #{paths}"
+    end
+  end
+end
+
 if $PROGRAM_NAME == __FILE__
-  DependencyJiggler.new.run
+  if OSRelease.available? && (OSRelease::ID == 'ubuntu' ||
+                              OSRelease::ID_LIKE.include?('ubuntu'))
+    DependencyJiggler.new.run
+  end
 
   neon_docker = NeonDocker.new
   options = neon_docker.command_options
