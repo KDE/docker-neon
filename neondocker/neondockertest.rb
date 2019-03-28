@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 # Copyright 2017 Jonathan Riddell <jr@jriddell.org>
+# Copyright 2015-2019 Harald Sitter <sitter@kde.org>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,6 +22,40 @@
 require 'test/unit'
 require_relative 'neondocker'
 require 'timeout'
+
+class ExecutableTest < Test::Unit::TestCase
+  def setup
+    ENV['PATH'] = Dir.pwd
+  end
+
+  def make_exe(name)
+    File.write(name, '')
+    File.chmod(0o700, name)
+  end
+
+  def test_exec_not_windows
+    # If env looks windowsy, skip this test. It won't pass because we look
+    # for gpg2.exe which obviously won't exist.
+    return if ENV['PATHEXT']
+    make_exe('gpg2')
+    assert_equal "#{Dir.pwd}/gpg2", Executable.new('gpg2').find
+    assert_nil Executable.new('foobar').find
+  end
+
+  def test_windows
+    # windows
+    ENV['RELEASEME_FORCE_WINDOWS']
+    make_exe('gpg2.exe')
+    make_exe('svn.com')
+
+    ENV['PATHEXT'] = '.COM;.EXE'.downcase # downcase so this passes on Linux
+    ENV['PATH'] = Dir.pwd
+
+    assert_equal "#{Dir.pwd}/gpg2.exe", Executable.new('gpg2').find
+    assert_equal "#{Dir.pwd}/svn.com", Executable.new('svn').find
+    assert_nil Executable.new('foobar').find
+  end
+end
 
 class NeonDockerTest < Test::Unit::TestCase
   def setup

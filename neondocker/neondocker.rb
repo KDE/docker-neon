@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 # Copyright 2017 Jonathan Riddell <jr@jriddell.org>
+# Copyright 2015-2019 Harald Sitter <sitter@kde.org>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -18,14 +19,97 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-begin
-  require 'docker'
-rescue LoadError
-  puts 'Could not find docker-api library, run: sudo gem install docker-api'
-  exit 1
+if $PROGRAM_NAME != __FILE__
+  # Note that during program execution docker is required in the exec block
+  # as it gets on-demand installed if applicable.
+  begin
+    require 'docker'
+  rescue LoadError
+    puts 'Could not find docker-api library, run: sudo gem install docker-api'
+    exit 1
+  end
 end
+
+require 'etc'
 require 'optparse'
-require 'mkmf'
+
+# Finds executables. MakeMakefile is the only core ruby entity providing
+# PATH based executable lookup, unfortunately it is really not meant to be
+# used outside extconf.rb use cases as it mangles the main name scope by
+# injecting itself into it (which breaks for example the ffi gem).
+# The Shell interface's command-processor also has lookup code but it's not
+# Windows compatible.
+# NB: this is lifted from releaseme! should this need changing, change it there
+# first! also mind the unit test.
+class Executable
+  attr_reader :bin
+
+  def initialize(bin)
+    @bin = bin
+  end
+
+  # Finds the executable in PATH by joining it with all parts of PATH and
+  # checking if the resulting absolute path exists and is an executable.
+  # This also honor's Windows' PATHEXT to determine the list of potential
+  # file extensions. So find('gpg2') will find gpg2 on POSIX and gpg2.exe
+  # on Windows.
+  def find
+    # PATHEXT on Windows defines the valid executable extensions.
+    exts = ENV.fetch('PATHEXT', '').split(';')
+    # On other systems we'll work with no extensions.
+    exts << '' if exts.empty?
+
+    ENV['PATH'].split(File::PATH_SEPARATOR).each do |path|
+      path = unescape_path(path)
+      exts.each do |ext|
+        file = File.join(path, bin + ext)
+        return file if executable?(file)
+      end
+    end
+
+    nil
+  end
+
+  private
+
+  class << self
+    def windows?
+      @windows ||= ENV['RELEASEME_FORCE_WINDOWS'] || mswin? || mingw?
+    end
+
+    private
+
+    def mswin?
+      @mswin ||= /mswin/ =~ RUBY_PLATFORM
+    end
+
+    def mingw?
+      @mingw ||= /mingw/ =~ RUBY_PLATFORM
+    end
+  end
+
+  def windows?
+    self.class.windows?
+  end
+
+  def executable?(path)
+    stat = File.stat(path)
+  rescue SystemCallError
+  else
+    return true if stat.file? && stat.executable?
+  end
+
+  def unescape_path(path)
+    # Strip qutation.
+    # NB: POSIX does not define any quoting mechanism so you simply cannot
+    # have colons in PATH on POSIX systems as a side effect we mustn't
+    # strip quotes as they have no syntactic meaning and instead are
+    # assumed to be part of the path
+    # http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html#tag_08_03
+    return path.sub(/\A"(.*)"\z/m, '\1') if windows?
+    path
+  end
+end
 
 # A wee command to simplify running KDE neon Docker images.
 #
@@ -128,7 +212,7 @@ class NeonDocker
 
   # Is the command available to run?
   def installed?(command)
-    MakeMakefile.find_executable(command)
+    Executable.new(command).find
   end
 
   def running_xhost
@@ -212,7 +296,107 @@ class NeonDocker
   end
 end
 
+# Jiggles dependencies into place.
+
+# Install deb dependencies.
+class DebDependencies
+  def run
+    pkgs_to_install = []
+    pkgs_to_install << 'docker.io' unless File.exist?('/var/run/docker.sock')
+    pkgs_to_install << 'xserver-xephyr' unless Executable.new('Xephyr').find
+
+    return if pkgs_to_install.empty?
+
+    warn 'Some packages need installing to use neondocker...'
+    system('pkcon', 'install', *pkgs_to_install) || raise
+  end
+end
+
+# Install !core gem dependencies and re-execs.
+class GemDependencies
+  def run
+    require 'docker'
+  rescue LoadError
+    if ENV['NEONDOCKER_REEXC']
+      abort 'E: Installing ruby dependencies failed -> bugs.kde.org'
+    end
+    warn 'Some ruby dependencies need installing to use neondocker...'
+    system('pkexec', 'gem', 'install', '--no-document', 'docker-api')
+    ENV['NEONDOCKER_REEXC'] = '1'
+    puts '...reexecuting...'
+    exec(__FILE__, *ARGV)
+  end
+end
+
+# Switchs group through re-exec.
+class GroupDependencies
+  DOCKER_GROUP = 'docker'.freeze
+
+  def run
+    return if Process.uid.zero? # root always has access
+    return if Process.groups.include?(docker_gid)
+
+    unless user_in_group?
+      adduser? || raise # adduser? actually aborts, the raise is just sugar
+      system('pkexec', 'adduser', Etc.getlogin, DOCKER_GROUP) || raise
+    end
+
+    puts '...reexecuting with docker access...'
+    exec('sg', DOCKER_GROUP, '-c', __FILE__, *ARGV)
+  end
+
+  private
+
+  def user_in_group?
+    member = false
+    Etc.group do |group|
+      member = group.mem.include?(Etc.getlogin) if group.name == DOCKER_GROUP
+    end
+    member
+  end
+
+  def adduser?
+    loop do
+      puts <<~QUESTION
+        You currently do not have access to the docker socket. Do you want to
+        give this user access? [Y/n]
+      QUESTION
+
+      input = gets.strip
+      if input.casecmp('n').zero?
+        abort <<~MSG
+          Without socket access you need to use pkexec or sudo to run neondocker
+        MSG
+      end
+
+      return true if input.casecmp('y').zero?
+    end
+    false
+  end
+
+  def docker_gid
+    @docker_gid ||= begin
+      gid = nil
+      Etc.group do |group|
+        gid = group.gid if group.name == DOCKER_GROUP
+      end
+      gid
+    end
+  end
+end
+
+# Jiggles dependencies into place.
+class DependencyJiggler
+  def run
+    DebDependencies.new.run
+    GemDependencies.new.run
+    GroupDependencies.new.run
+  end
+end
+
 if $PROGRAM_NAME == __FILE__
+  DependencyJiggler.new.run
+
   neon_docker = NeonDocker.new
   options = neon_docker.command_options
   neon_docker.validate_docker
