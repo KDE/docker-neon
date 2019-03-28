@@ -1,6 +1,7 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 # Copyright 2017 Jonathan Riddell <jr@jriddell.org>
+# Copyright 2015-2019 Harald Sitter <sitter@kde.org>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -18,50 +19,131 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-begin
-  require 'docker'
-rescue
-  puts 'Could not find docker-api library, run: sudo gem install docker-api'
-  exit 1
+if $PROGRAM_NAME != __FILE__
+  # Note that during program execution docker is required in the exec block
+  # as it gets on-demand installed if applicable.
+  begin
+    require 'docker'
+  rescue LoadError
+    puts 'Could not find docker-api library, run: sudo gem install docker-api'
+    exit 1
+  end
 end
+
+require 'etc'
 require 'optparse'
-require 'mkmf'
 
-=begin
-A wee command to simplify running KDE neon Docker images.
+# Finds executables. MakeMakefile is the only core ruby entity providing
+# PATH based executable lookup, unfortunately it is really not meant to be
+# used outside extconf.rb use cases as it mangles the main name scope by
+# injecting itself into it (which breaks for example the ffi gem).
+# The Shell interface's command-processor also has lookup code but it's not
+# Windows compatible.
+# NB: this is lifted from releaseme! should this need changing, change it there
+# first! also mind the unit test.
+class Executable
+  attr_reader :bin
 
-KDE neon Docker images are the fastest and easiest way to test out KDE's
-software.  You can use them on top of any Linux distro.
+  def initialize(bin)
+    @bin = bin
+  end
 
-## Pre-requisites
+  # Finds the executable in PATH by joining it with all parts of PATH and
+  # checking if the resulting absolute path exists and is an executable.
+  # This also honor's Windows' PATHEXT to determine the list of potential
+  # file extensions. So find('gpg2') will find gpg2 on POSIX and gpg2.exe
+  # on Windows.
+  def find
+    # PATHEXT on Windows defines the valid executable extensions.
+    exts = ENV.fetch('PATHEXT', '').split(';')
+    # On other systems we'll work with no extensions.
+    exts << '' if exts.empty?
 
-Install Docker and ensure you add yourself into the necessary group.
-Also install Xephyr which is the X-server-within-a-window to run
-Plasma.  With Ubuntu this is:
+    ENV['PATH'].split(File::PATH_SEPARATOR).each do |path|
+      path = unescape_path(path)
+      exts.each do |ext|
+        file = File.join(path, bin + ext)
+        return file if executable?(file)
+      end
+    end
 
-```apt install docker.io xserver-xephyr
-usermod -G docker
-newgrp docker
-```
+    nil
+  end
 
-# Run
+  private
 
-To run a full Plasma session of Neon Developer Unstable Edition:
-`neondocker`
+  class << self
+    def windows?
+      @windows ||= ENV['RELEASEME_FORCE_WINDOWS'] || mswin? || mingw?
+    end
 
-To run a full Plasma session of Neon User Edition:
-`neondocker --edition user`
+    private
 
-For more options see
-`neondocker --help`
-=end
+    def mswin?
+      @mswin ||= /mswin/ =~ RUBY_PLATFORM
+    end
+
+    def mingw?
+      @mingw ||= /mingw/ =~ RUBY_PLATFORM
+    end
+  end
+
+  def windows?
+    self.class.windows?
+  end
+
+  def executable?(path)
+    stat = File.stat(path)
+  rescue SystemCallError
+  else
+    return true if stat.file? && stat.executable?
+  end
+
+  def unescape_path(path)
+    # Strip qutation.
+    # NB: POSIX does not define any quoting mechanism so you simply cannot
+    # have colons in PATH on POSIX systems as a side effect we mustn't
+    # strip quotes as they have no syntactic meaning and instead are
+    # assumed to be part of the path
+    # http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html#tag_08_03
+    return path.sub(/\A"(.*)"\z/m, '\1') if windows?
+    path
+  end
+end
+
+# A wee command to simplify running KDE neon Docker images.
+#
+# KDE neon Docker images are the fastest and easiest way to test out KDE's
+# software.  You can use them on top of any Linux distro.
+#
+# ## Pre-requisites
+#
+# Install Docker and ensure you add yourself into the necessary group.
+# Also install Xephyr which is the X-server-within-a-window to run
+# Plasma.  With Ubuntu this is:
+#
+# ```apt install docker.io xserver-xephyr
+# usermod -G docker
+# newgrp docker
+# ```
+#
+# # Run
+#
+# To run a full Plasma session of Neon Developer Unstable Edition:
+# `neondocker`
+#
+# To run a full Plasma session of Neon User Edition:
+# `neondocker --edition user`
+#
+# For more options see
+# `neondocker --help`
 class NeonDocker
   attr_accessor :options # settings
   attr_accessor :tag # docker image tag to use
   attr_accessor :container # my Docker::Container
 
   def command_options
-    @options = { pull: false, all: false, edition: 'dev-unstable', kill: false }
+    @options = { pull: false, all: false, edition: 'unstable', kill: false }
     OptionParser.new do |opts|
       opts.banner = 'Usage: neondocker [options] [standalone-application]'
 
@@ -73,7 +155,7 @@ class NeonDocker
         @options[:all] = v
       end
       opts.on('-e', '--edition EDITION',
-              '[user-lts,user,dev-stable,dev-unstable]') do |v|
+              '[plasma_lts,user,testing,unstable]') do |v|
         @options[:edition] = v
       end
       opts.on('-k', '--keep-alive', 'keep-alive container on exit') do |v|
@@ -94,7 +176,7 @@ class NeonDocker
                    'start a new container.')
     end.parse!
 
-    edition_options = ['user-lts', 'user', 'dev-stable', 'dev-unstable']
+    edition_options = ['plasma_lts', 'user', 'testing', 'unstable']
     unless edition_options.include?(@options[:edition])
       puts "Unknown edition. Valid editions are: #{edition_options}"
       exit 1
@@ -103,18 +185,19 @@ class NeonDocker
   end
 
   def validate_docker
-      Docker.validate_version!
-    rescue
-      puts 'Could not connect to Docker, check it is installed, running and ' \
-           'your user is in the right group for access'
-      exit 1
+    Docker.validate_version!
+  rescue
+    puts 'Could not connect to Docker, check it is installed, running and ' \
+         'your user is in the right group for access'
+    exit 1
   end
 
   # Has the image already been downloaded to the local Docker?
   def docker_has_image?
-    !Docker::Image
-      .all
-      .find { |image| image.info['RepoTags'].include?(@tag) }.nil?
+    !Docker::Image.all.find do |image|
+      next false if image.info['RepoTags'].nil?
+      image.info['RepoTags'].include?(@tag)
+    end.nil?
   end
 
   def docker_image_tag
@@ -129,7 +212,7 @@ class NeonDocker
 
   # Is the command available to run?
   def installed?(command)
-    MakeMakefile.find_executable(command)
+    Executable.new(command).find
   end
 
   def running_xhost
@@ -155,7 +238,7 @@ class NeonDocker
     end
     xephyr = IO.popen("Xephyr -screen 1024x768 :#{xdisplay}")
     yield
-    Process.kill("KILL", xephyr.pid)
+    Process.kill('KILL', xephyr.pid)
   end
 
   # If this image already has a container then use that, else start a new one
@@ -192,26 +275,128 @@ class NeonDocker
   # runs the container and wait until Plasma or whatever has stopped running
   def run_container
     # find devices to bind for Wayland
-    devices = Dir["/dev/dri/*"] + Dir["/dev/video*"]
+    devices = Dir['/dev/dri/*'] + Dir['/dev/video*']
     devices_list = []
     devices.each do |dri|
-      devices_list.push({'PathOnHost' => dri, 'PathInContainer' => dri, 'CgroupPermissions' => 'mrw'})
+      devices_list.push('PathOnHost' => dri,
+                        'PathInContainer' => dri,
+                        'CgroupPermissions' => 'mrw')
     end
     container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
                     'Devices' => devices_list,
                     'Privileged' => true)
-    container.refresh!
-    while container.info['State']['Status'] == 'running'
+    loop do
+      container.refresh! if container.respond_to? :refresh!
+      status = container.info.fetch('State', [])['Status']
+      status ||= container.json.fetch('State').fetch('Status')
+      break if status == 'running'
       sleep 1
-      container.refresh!
     end
-    if !@options[:keep_alive] || @options[:reattach]
-      container.delete
+    container.delete if !@options[:keep_alive] || @options[:reattach]
+  end
+end
+
+# Jiggles dependencies into place.
+
+# Install deb dependencies.
+class DebDependencies
+  def run
+    pkgs_to_install = []
+    pkgs_to_install << 'docker.io' unless File.exist?('/var/run/docker.sock')
+    pkgs_to_install << 'xserver-xephyr' unless Executable.new('Xephyr').find
+
+    return if pkgs_to_install.empty?
+
+    warn 'Some packages need installing to use neondocker...'
+    system('pkcon', 'install', *pkgs_to_install) || raise
+  end
+end
+
+# Install !core gem dependencies and re-execs.
+class GemDependencies
+  def run
+    require 'docker'
+  rescue LoadError
+    if ENV['NEONDOCKER_REEXC']
+      abort 'E: Installing ruby dependencies failed -> bugs.kde.org'
+    end
+    warn 'Some ruby dependencies need installing to use neondocker...'
+    system('pkexec', 'gem', 'install', '--no-document', 'docker-api')
+    ENV['NEONDOCKER_REEXC'] = '1'
+    puts '...reexecuting...'
+    exec(__FILE__, *ARGV)
+  end
+end
+
+# Switchs group through re-exec.
+class GroupDependencies
+  DOCKER_GROUP = 'docker'.freeze
+
+  def run
+    return if Process.uid.zero? # root always has access
+    return if Process.groups.include?(docker_gid)
+
+    unless user_in_group?
+      adduser? || raise # adduser? actually aborts, the raise is just sugar
+      system('pkexec', 'adduser', Etc.getlogin, DOCKER_GROUP) || raise
+    end
+
+    puts '...reexecuting with docker access...'
+    exec('sg', DOCKER_GROUP, '-c', __FILE__, *ARGV)
+  end
+
+  private
+
+  def user_in_group?
+    member = false
+    Etc.group do |group|
+      member = group.mem.include?(Etc.getlogin) if group.name == DOCKER_GROUP
+    end
+    member
+  end
+
+  def adduser?
+    loop do
+      puts <<~QUESTION
+        You currently do not have access to the docker socket. Do you want to
+        give this user access? [Y/n]
+      QUESTION
+
+      input = gets.strip
+      if input.casecmp('n').zero?
+        abort <<~MSG
+          Without socket access you need to use pkexec or sudo to run neondocker
+        MSG
+      end
+
+      return true if input.casecmp('y').zero?
+    end
+    false
+  end
+
+  def docker_gid
+    @docker_gid ||= begin
+      gid = nil
+      Etc.group do |group|
+        gid = group.gid if group.name == DOCKER_GROUP
+      end
+      gid
     end
   end
 end
 
+# Jiggles dependencies into place.
+class DependencyJiggler
+  def run
+    DebDependencies.new.run
+    GemDependencies.new.run
+    GroupDependencies.new.run
+  end
+end
+
 if $PROGRAM_NAME == __FILE__
+  DependencyJiggler.new.run
+
   neon_docker = NeonDocker.new
   options = neon_docker.command_options
   neon_docker.validate_docker
