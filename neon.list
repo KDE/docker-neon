@@ -1,2 +1,2 @@
-deb http://archive.neon.kde.org/dev/unstable bionic main
-deb-src http://archive.neon.kde.org/dev/unstable bionic main
+deb http://archive.neon.kde.org/unstable bionic main
+deb-src http://archive.neon.kde.org/unstable bionic main
