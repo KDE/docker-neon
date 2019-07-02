@@ -39,4 +39,4 @@ USER neon
 COPY gitconfig $HOME/.gitconfig
 COPY kwinrc $HOME/.config/kwinrc
 WORKDIR /home/neon
-CMD startkde
+CMD startplasma-x11
