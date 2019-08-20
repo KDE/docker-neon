@@ -12,7 +12,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     apt-key add /public.key && \
     rm /public.key && \
     apt-get update && \
-    apt-get install -y ubuntu-minimal ubuntu-standard neon-desktop plasma-workspace-wayland kwin-wayland kwin-wayland-backend-x11 kwin-wayland-backend-wayland kwin && \
+    apt-get install -y ubuntu-minimal ubuntu-standard neon-desktop plasma-workspace-wayland kwin-wayland kwin-wayland-backend-x11 kwin-wayland-backend-wayland kwin kdesdk-devenv-dependencies && \
     apt-get dist-upgrade -y && \
     groupadd admin && \
     useradd -G admin,video -ms /bin/bash neon && \
@@ -37,5 +37,6 @@ ENV SHELL=/bin/bash
 ENV XDG_RUNTIME_DIR=/run/neon
 USER neon
 COPY gitconfig $HOME/.gitconfig
+COPY kwinrc $HOME/.config/kwinrc
 WORKDIR /home/neon
-CMD startkde
+CMD startplasma-x11
