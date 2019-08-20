@@ -290,7 +290,7 @@ class NeonDocker
       container.refresh! if container.respond_to? :refresh!
       status = container.info.fetch('State', [])['Status']
       status ||= container.json.fetch('State').fetch('Status')
-      break if status == 'running'
+      break if not status == 'running'
       sleep 1
     end
     container.delete if !@options[:keep_alive] || @options[:reattach]
