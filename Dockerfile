@@ -33,7 +33,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
 ENV SHELL=/bin/bash
-
+ENV HOME=/home/neon
 ENV XDG_RUNTIME_DIR=/run/neon
 USER neon
 COPY gitconfig $HOME/.gitconfig
