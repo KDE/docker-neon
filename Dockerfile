@@ -38,5 +38,6 @@ ENV XDG_RUNTIME_DIR=/run/neon
 USER neon
 COPY gitconfig $HOME/.gitconfig
 COPY kwinrc $HOME/.config/kwinrc
+RUN chown neon.neon .gitconfig .config
 WORKDIR /home/neon
 CMD startplasma-x11
