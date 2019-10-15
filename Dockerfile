@@ -40,4 +40,4 @@ COPY gitconfig $HOME/.gitconfig
 COPY kwinrc $HOME/.config/kwinrc
 RUN sudo chown -R neon.neon $HOME/.gitconfig $HOME/.config
 WORKDIR /home/neon
-CMD startkde
+CMD startplasma-x11
