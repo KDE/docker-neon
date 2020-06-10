@@ -29,6 +29,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     # Wayland bits \
     mkdir /run/neon && \
     chown neon:neon /run/neon && \
+    chmod 7700 /run/neon && \
     export PS1=`cat /bash-prompt`
 ENV DISPLAY=:1
 ENV KDE_FULL_SESSION=true
