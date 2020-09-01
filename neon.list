@@ -1,2 +1,2 @@
-deb http://archive.neon.kde.org/user/lts bionic main
-deb-src http://archive.neon.kde.org/user/lts bionic main
+deb http://archive.neon.kde.org/user/lts focal main
+deb-src http://archive.neon.kde.org/user/lts focal main
