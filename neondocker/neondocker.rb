@@ -514,7 +514,7 @@ end
 
 if $PROGRAM_NAME == __FILE__
   if OSRelease.available? && (OSRelease::ID == 'ubuntu' ||
-                              OSRelease::ID_LIKE.include?('ubuntu'))
+                             (defined? OSRelease::ID_LIKE && OSRelease::ID_LIKE.include?('ubuntu')))
     DependencyJiggler.new.run
   end
 
