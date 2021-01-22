@@ -13,7 +13,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
     rm /public.key && \
     apt-get update && \
     apt-get install -y ubuntu-minimal ubuntu-standard neon-desktop plasma-workspace-wayland kwin-wayland kwin-wayland-backend-x11 kwin-wayland-backend-wayland kwin-x11 && \
-    apt-get dist-upgrade -y && \
+    apt-get dist-upgrade -y --allow-downgrades && \
     groupadd admin && \
     useradd -G admin,video -ms /bin/bash neon && \
     # Refresh apt cache once more now that appstream is installed \
