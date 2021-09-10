@@ -156,7 +156,7 @@ class NeonDocker
         @options[:all] = v
       end
       opts.on('-e', '--edition EDITION',
-              '[plasma_lts,user,testing,unstable]') do |v|
+              '[user,testing,unstable]') do |v|
         @options[:edition] = v
       end
       opts.on('-k', '--keep-alive', 'keep-alive container on exit') do |v|
@@ -177,7 +177,7 @@ class NeonDocker
                    'start a new container.')
     end.parse!
 
-    edition_options = ['plasma_lts', 'user', 'testing', 'unstable']
+    edition_options = ['user', 'testing', 'unstable']
     unless edition_options.include?(@options[:edition])
       puts "Unknown edition. Valid editions are: #{edition_options}"
       exit 1
@@ -186,7 +186,7 @@ class NeonDocker
   end
 
   def validate_docker
-    Docker.validate_version!
+    Docker.version
   rescue
     puts 'Could not connect to Docker, check it is installed, running and ' \
          'your user is in the right group for access'
@@ -245,6 +245,14 @@ class NeonDocker
   # If this image already has a container then use that, else start a new one
   def container
     return @container if defined? @container
+    # find devices to bind for Wayland
+    devices = Dir['/dev/dri/*'] + Dir['/dev/video*']
+    devices_list = []
+    devices.each do |dri|
+      devices_list.push('PathOnHost' => dri,
+                        'PathInContainer' => dri,
+                        'CgroupPermissions' => 'mrw')
+    end
     if @options[:reattach]
       all_containers = Docker::Container.all(all: true)
       all_containers.each do |container|
@@ -261,31 +269,31 @@ class NeonDocker
     elsif !ARGV.empty?
       @container = Docker::Container.create('Image' => @tag,
                                             'Cmd' => ARGV,
-                                            'Env' => ['DISPLAY=:0'])
+                                            'Env' => ['DISPLAY=:0'],
+                                            'Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
+                                            'Devices' => devices_list,
+                                            'Privileged' => true)
     elsif @options[:wayland]
       @container = Docker::Container.create('Image' => @tag,
                                             'Env' => ['DISPLAY=:0'],
-                                            'Cmd' => ['startplasmacompositor'])
+                                            'Cmd' => ['startplasmacompositor'],
+                                            'Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
+                                            'Devices' => devices_list,
+                                            'Privileged' => true)
     else
       @container = Docker::Container.create('Image' => @tag,
-                                            'Env' => ["DISPLAY=:#{xdisplay}"])
+                                            'Env' => ["DISPLAY=:#{xdisplay}"],
+                                            'Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
+                                            'Devices' => devices_list,
+                                            'Privileged' => true)
     end
     @container
   end
 
   # runs the container and wait until Plasma or whatever has stopped running
   def run_container
-    # find devices to bind for Wayland
-    devices = Dir['/dev/dri/*'] + Dir['/dev/video*']
-    devices_list = []
-    devices.each do |dri|
-      devices_list.push('PathOnHost' => dri,
-                        'PathInContainer' => dri,
-                        'CgroupPermissions' => 'mrw')
-    end
-    container.start('Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
-                    'Devices' => devices_list,
-                    'Privileged' => true)
+
+    container.start()
     loop do
       container.refresh! if container.respond_to? :refresh!
       status = container.info.fetch('State', [])['Status']
@@ -514,7 +522,7 @@ end
 
 if $PROGRAM_NAME == __FILE__
   if OSRelease.available? && (OSRelease::ID == 'ubuntu' ||
-                              OSRelease::ID_LIKE.include?('ubuntu'))
+                             (defined? OSRelease::ID_LIKE && OSRelease::ID_LIKE.include?('ubuntu')))
     DependencyJiggler.new.run
   end
 
