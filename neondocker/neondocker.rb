@@ -156,7 +156,7 @@ class NeonDocker
         @options[:all] = v
       end
       opts.on('-e', '--edition EDITION',
-              '[plasma_lts,user,testing,unstable]') do |v|
+              '[user,testing,unstable]') do |v|
         @options[:edition] = v
       end
       opts.on('-k', '--keep-alive', 'keep-alive container on exit') do |v|
@@ -177,7 +177,7 @@ class NeonDocker
                    'start a new container.')
     end.parse!
 
-    edition_options = ['plasma_lts', 'user', 'testing', 'unstable']
+    edition_options = ['user', 'testing', 'unstable']
     unless edition_options.include?(@options[:edition])
       puts "Unknown edition. Valid editions are: #{edition_options}"
       exit 1
