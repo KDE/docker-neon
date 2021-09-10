@@ -276,7 +276,7 @@ class NeonDocker
     elsif @options[:wayland]
       @container = Docker::Container.create('Image' => @tag,
                                             'Env' => ['DISPLAY=:0'],
-                                            'Cmd' => ['startplasmacompositor'],
+                                            'Cmd' => ['startplasma-wayland'],
                                             'Binds' => ['/tmp/.X11-unix:/tmp/.X11-unix'],
                                             'Devices' => devices_list,
                                             'Privileged' => true)
