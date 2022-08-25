@@ -1,2 +1,2 @@
-deb http://archive.neon.kde.org/user focal main
-deb-src http://archive.neon.kde.org/user focal main
+deb http://archive.neon.kde.org/user jammy main
+deb-src http://archive.neon.kde.org/user jammy main
