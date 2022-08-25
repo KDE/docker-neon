@@ -1,2 +1,2 @@
-deb http://archive.neon.kde.org/testing focal main
-deb-src http://archive.neon.kde.org/testing focal main
+deb http://archive.neon.kde.org/testing jammy main
+deb-src http://archive.neon.kde.org/testing jammy main
